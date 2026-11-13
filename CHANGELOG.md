@@ -5,6 +5,13 @@ All notable changes to Mnemo. Versions follow
 written by release-please from the commit titles. Container images:
 `ghcr.io/mnema-xyz/mnemo`.
 
+## [0.1.3](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/compare/v0.1.2...v0.1.3) (2026-11-13)
+
+
+### Bug Fixes
+
+* sign the published image with cosign (keyless) and document how to verify it ([#10](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/issues/10)) ([53b7b21](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/commit/53b7b21c05f9f9ae8441b5dc900360d15dc2ac95))
+
 ## [0.1.2](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/compare/v0.1.1...v0.1.2) (2026-11-13)
 
 
