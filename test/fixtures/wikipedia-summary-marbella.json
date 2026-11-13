@@ -1,0 +1,53 @@
+{
+    "type": "standard",
+    "title": "Marbella",
+    "displaytitle": "<span lang=\"en\" dir=\"ltr\"><span class=\"mw-page-title-main\">Marbella</span></span>",
+    "namespace": {
+        "id": 0,
+        "text": ""
+    },
+    "wikibase_item": "Q484799",
+    "titles": {
+        "canonical": "Marbella",
+        "normalized": "Marbella",
+        "display": "<span lang=\"en\" dir=\"ltr\"><span class=\"mw-page-title-main\">Marbella</span></span>"
+    },
+    "pageid": 443852,
+    "thumbnail": {
+        "source": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Captivating_Views_of_Old_Town_Marbella.jpg/330px-Captivating_Views_of_Old_Town_Marbella.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+        "width": 330,
+        "height": 264
+    },
+    "originalimage": {
+        "source": "https://upload.wikimedia.org/wikipedia/commons/b/b1/Captivating_Views_of_Old_Town_Marbella.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+        "width": 1920,
+        "height": 1536
+    },
+    "lang": "en",
+    "dir": "ltr",
+    "revision": "1383430921",
+    "tid": "02e8e938-d6e1-11f1-9e92-f654af8f56d8",
+    "timestamp": "2026-11-02T17:15:33Z",
+    "description": "City in Andalusia, Spain",
+    "description_source": "local",
+    "coordinates": {
+        "lat": 36.51666667,
+        "lon": -4.88333333
+    },
+    "content_urls": {
+        "desktop": {
+            "page": "https://en.wikipedia.org/wiki/Marbella",
+            "revisions": "https://en.wikipedia.org/wiki/Marbella?action=history",
+            "edit": "https://en.wikipedia.org/wiki/Marbella?action=edit",
+            "talk": "https://en.wikipedia.org/wiki/Talk:Marbella"
+        },
+        "mobile": {
+            "page": "https://en.wikipedia.org/wiki/Marbella",
+            "revisions": "https://en.wikipedia.org/wiki/Special:History/Marbella",
+            "edit": "https://en.wikipedia.org/wiki/Marbella?action=edit",
+            "talk": "https://en.wikipedia.org/wiki/Talk:Marbella"
+        }
+    },
+    "extract": "Marbella is a city and municipality in southern Spain, belonging to the province of M\u00e1laga in the autonomous community of Andalusia. It is part of the Costa del Sol and is the headquarters of the Association of Municipalities of the region; it is also the head of the judicial district that bears its name.",
+    "extract_html": "<p><b>Marbella</b> is a city and municipality in southern Spain, belonging to the province of M\u00e1laga in the autonomous community of Andalusia. It is part of the Costa del Sol and is the headquarters of the Association of Municipalities of the region; it is also the head of the judicial district that bears its name.</p>"
+}
