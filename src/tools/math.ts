@@ -270,10 +270,13 @@ export function evaluate(expression: string): number {
   return v
 }
 
-/** Formats a result for people: at most 12 significant digits, no float noise. */
+/** Formats a result for people: whole numbers exactly while a double holds
+ * them exactly (up to 2^53), anything else to 12 significant digits, so no
+ * digit is printed that the computation does not know. */
 export function formatNumber(v: number): string {
   if (Object.is(v, -0)) return '0'
-  if (Number.isInteger(v) && Math.abs(v) < 1e21) return String(v)
+  if (Number.isInteger(v) && Math.abs(v) <= 2 ** 53) return String(v)
+  if (Math.abs(v) > 2 ** 53) return v.toPrecision(12).replace(/\.?0+e/, 'e')
   const s = Number(v.toPrecision(12))
   return String(s)
 }

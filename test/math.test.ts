@@ -31,6 +31,13 @@ describe('math parser', () => {
     assert.equal(calc('6 × 7 ÷ 2 − 1'), '20')
   })
 
+  it('never prints digits it does not know: integers above 2^53 get 12 significant digits', () => {
+    assert.equal(calc('2^53'), '9007199254740992')
+    assert.equal(calc('3^40'), '1.21576654591e+19')
+    assert.equal(calc('99999999999999999'), '1e+17')
+    assert.equal(calc('-(3^40)'), '-1.21576654591e+19')
+  })
+
   it('hides float noise', () => {
     assert.equal(calc('0.1 + 0.2'), '0.3')
     assert.equal(calc('1 / 3'), '0.333333333333')

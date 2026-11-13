@@ -21,13 +21,15 @@ describe('details text', () => {
     outputTokens: 80,
     costUsd: 0,
     historyTurns: 0,
+    context: 'none',
     sentDisplayName: false,
   }
 
   it('says when no tool was used and what was sent', () => {
     const t = detailsText(base)
     assert.match(t, /No tools were used/)
-    assert.match(t, /Sent to the AI provider: your question\./)
+    assert.match(t, /Sent to the AI provider: the question\./)
+    assert.doesNotMatch(t, /your/)
     assert.match(t, /Tokens: 1200 in, 80 out\./)
   })
 
@@ -39,12 +41,14 @@ describe('details text', () => {
         { name: 'calculator', input: { expression: '`x`' }, ok: false },
       ],
       historyTurns: 4,
+      context: 'thread',
       sentDisplayName: true,
       costUsd: 0.00016,
     })
     assert.match(t, /- Weather \(Open-Meteo\): `\{"place":"Marbella"\}`/)
     assert.match(t, /- Calculator \(failed\): `\{"expression":"'x'"\}`/)
-    assert.match(t, /your question, the last 4 messages of this thread, your display name/)
+    assert.match(t, /the question, the last 4 messages of the thread, the asker's display name/)
+    assert.match(detailsText({ ...base, historyTurns: 2, context: 'follow-up' }), /the question, the earlier question and answer\./)
     assert.match(t, /about \$0\.0002/)
   })
 })

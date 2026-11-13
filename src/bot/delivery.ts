@@ -43,13 +43,21 @@ export interface AnswerDetails {
   inputTokens: number
   outputTokens: number
   costUsd: number
-  /** Earlier turns of the thread that were sent along. */
+  /** Earlier turns that were sent along, and where they came from. */
   historyTurns: number
+  context: 'none' | 'thread' | 'follow-up'
   sentDisplayName: boolean
 }
 
-export function detailsFrom(r: Extract<AskResult, { kind: 'answer' }>, historyTurns: number, sentDisplayName: boolean, costUsd: number): AnswerDetails {
+export function detailsFrom(
+  r: Extract<AskResult, { kind: 'answer' }>,
+  historyTurns: number,
+  context: AnswerDetails['context'],
+  sentDisplayName: boolean,
+  costUsd: number,
+): AnswerDetails {
   return {
+    context,
     provider: r.provider,
     model: r.model,
     toolsUsed: r.toolsUsed,
@@ -72,9 +80,12 @@ export function detailsText(d: AnswerDetails): string {
       lines.push(`- ${TOOL_LABELS[t.name] ?? t.name}${t.ok ? '' : ' (failed)'}: \`${describeInput(t.input).replaceAll('`', "'")}\``)
     }
   }
-  const sent = ['your question']
-  if (d.historyTurns > 0) sent.push(`the last ${d.historyTurns} messages of this thread`)
-  if (d.sentDisplayName) sent.push('your display name')
+  // Anyone may open Details, so it speaks of "the question", not "your".
+  const sent = ['the question']
+  if (d.historyTurns > 0) {
+    sent.push(d.context === 'thread' ? `the last ${d.historyTurns} messages of the thread` : 'the earlier question and answer')
+  }
+  if (d.sentDisplayName) sent.push("the asker's display name")
   lines.push(
     '',
     `Sent to the AI provider: ${sent.join(', ')}.`,

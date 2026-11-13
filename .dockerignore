@@ -1,0 +1,14 @@
+# Only what the Dockerfile copies needs to reach the builder; secrets and
+# local state never do.
+.env
+.env.*
+!.env.example
+*.env
+.git
+.github
+node_modules
+data
+coverage
+test/integration/mnemo.log
+*.log
+.DS_Store

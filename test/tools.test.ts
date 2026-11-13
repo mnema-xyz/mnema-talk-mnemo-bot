@@ -92,6 +92,15 @@ describe('datetime tool', () => {
     assert.equal(out.now.time_zone, 'Europe/Madrid')
     assert.equal(out.now.time, '13:00')
   })
+  it('refuses dates and times that do not exist instead of rolling them over', () => {
+    assert.throws(() => fromLocal('2026-02-31 10:00', 'Europe/Berlin'), /no 31 February 2026|does not exist/)
+    assert.throws(() => fromLocal('2026-01-01 99:00', 'Europe/Berlin'), /hour/)
+    assert.throws(() => fromLocal('2026-01-01 10:75', 'Europe/Berlin'), /minute/)
+    assert.throws(() => fromLocal('2026-03-29 02:30', 'Europe/Berlin'), /does not exist.*clocks moved forward/)
+    assert.throws(() => fromLocal('2026-03-08 02:30', 'America/New_York'), /clocks moved forward/)
+    assert.equal(fromLocal('2028-02-29 12:00', 'UTC').toISOString(), '2028-02-29T12:00:00.000Z')
+  })
+
   it('converts across zones and daylight saving', async () => {
     const out = JSON.parse(
       await datetime.run({ convert: { time: '2026-07-01 09:00', from: 'Europe/Berlin', to: 'America/New_York' } }, ctxWith(recordedFetch([]))),

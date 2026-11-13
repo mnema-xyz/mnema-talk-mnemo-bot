@@ -328,7 +328,8 @@ export class MnemoBot {
   private remember(result: AskResult, r: Omit<AnswerRecord, 'answer' | 'details'>): string | undefined {
     if (result.kind !== 'answer') return undefined
     const id = randomBytes(9).toString('base64url')
-    const details = detailsFrom(result, r.history.length, this.s.sendDisplayName, this.budget.costUsd(result.usage))
+    const context = r.history.length === 0 ? 'none' : r.threadId ? 'thread' : 'follow-up'
+    const details = detailsFrom(result, r.history.length, context, this.s.sendDisplayName, this.budget.costUsd(result.usage))
     this.answers.set(id, { ...r, answer: result.text, details })
     return id
   }

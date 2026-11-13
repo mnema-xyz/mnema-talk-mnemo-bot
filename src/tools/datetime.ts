@@ -66,10 +66,23 @@ export function fromLocal(local: string, zone: string): Date {
   const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})$/.exec(local.trim())
   if (!m) throw new ToolError('time must look like "2026-11-13 15:30"')
   const [, y, mo, d, h, mi] = m.map(Number) as [number, number, number, number, number, number]
+  if (h > 23) throw new ToolError(`there is no hour ${h}: use 0 to 23`)
+  if (mi > 59) throw new ToolError(`there is no minute ${mi}: use 0 to 59`)
   const guess = Date.UTC(y, mo - 1, d, h, mi)
+  const g = new Date(guess)
+  if (g.getUTCMonth() !== mo - 1 || g.getUTCDate() !== d) {
+    const month = new Date(Date.UTC(2000, Math.min(Math.max(mo, 1), 12) - 1, 1)).toLocaleString('en', { month: 'long', timeZone: 'UTC' })
+    throw new ToolError(mo < 1 || mo > 12 ? `there is no month ${mo}` : `the date does not exist: there is no ${d} ${month} ${y}`)
+  }
   // Two passes settle the offset, also next to a daylight saving change.
   let t = guess - offsetMinutes(new Date(guess), zone) * 60_000
   t = guess - offsetMinutes(new Date(t), zone) * 60_000
+  // In the hour skipped when the clocks move forward the wall time never
+  // shows; say so instead of moving it silently.
+  const back = partsIn(new Date(t), zone)
+  if (Number(back.hour) !== h || Number(back.minute) !== mi) {
+    throw new ToolError(`${local.trim()} does not exist in ${zone}: the clocks moved forward then`)
+  }
   return new Date(t)
 }
 

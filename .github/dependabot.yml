@@ -29,6 +29,10 @@ updates:
       day: monday
     commit-message:
       prefix: "build(deps)"
+    ignore:
+      # Mnemo runs on Node 24 (LTS); a new major is a deliberate change.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
