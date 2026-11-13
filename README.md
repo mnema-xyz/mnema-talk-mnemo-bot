@@ -472,17 +472,21 @@ something goes wrong.
   `git pull && docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.
   Dependabot keeps the dependencies, the base image and the CI actions
   current in this repository.
-- **Verifying the image**: every release image is signed with cosign, keyless,
-  by this repository's release workflow:
+- **Verifying the image**: images from 0.1.3 on are signed with cosign,
+  keyless, by this repository's release workflow (earlier images are not
+  signed). Verify with a current cosign:
 
   ```sh
   cosign verify ghcr.io/mnema-xyz/mnemo:0.1 \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-    --certificate-identity-regexp '^https://github\.com/mnema-xyz/mnema-talk-mnemo-bot/'
+    --certificate-identity-regexp '^https://github\.com/mnema-xyz/mnema-talk-mnemo-bot/\.github/workflows/release\.yml@refs/(heads/main|tags/v.+)$'
   ```
 
-  Use it before an unattended update, for example in a cron job that only
-  deploys images that verify. Images up to 0.1.2 are not signed.
+  The signature belongs to the image digest, not to the tag: `cosign verify`
+  resolves the tag, and the output shows the digest it checked. For an
+  unattended update, verify the tag and then deploy that digest
+  (`ghcr.io/mnema-xyz/mnemo@sha256:...`), so nothing can change between the
+  check and the pull.
 - **One instance per bot token.** Two instances would both answer.
 
 ## Troubleshooting
