@@ -110,6 +110,19 @@ describe('unit conversion', () => {
     assert.equal(convertUnits(1, 'GiB', 'MB').toFixed(3), '1073.742')
     assert.equal(convertUnits(5, 'feet', 'm').toFixed(3), '1.524')
   })
+  it('converts temperatures however the unit is written', () => {
+    const t = (v: number, from: string, to: string) => Number(convertUnits(v, from, to).toFixed(6))
+    for (const [c, f] of [['degrees Celsius', 'degrees Fahrenheit'], ['°C', '°F'], ['celsius', 'fahrenheit'], ['C', 'F'], ['degree celsius', 'deg f']] as const) {
+      assert.equal(t(100, c, f), 212, `${c} -> ${f}`)
+      assert.equal(t(212, f, c), 100, `${f} -> ${c}`)
+      assert.equal(t(-40, c, f), -40)
+      assert.equal(t(-40, f, c), -40)
+    }
+    assert.equal(t(0, 'K', 'degrees Celsius'), -273.15)
+    assert.equal(t(25, 'degrees Celsius', 'kelvin'), 298.15)
+    assert.equal(t(300, 'kelvin', 'K'), 300)
+  })
+
   it('refuses mixed dimensions and unknown units', async () => {
     const ctx = ctxWith(recordedFetch([]))
     const r1 = await runTool([units], { id: '1', name: 'convert_units', input: { value: 1, from: 'kg', to: 'm' } }, ctx)

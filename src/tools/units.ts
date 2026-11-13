@@ -1,5 +1,6 @@
-// Unit conversion from a fixed table: every unit is a factor to its
-// dimension's base unit, temperature has its own formulas.
+// Unit conversion from a fixed table: every unit maps to its dimension's
+// base unit as base = value * factor + offset (the offset is only non-zero
+// for °C and °F, whose base is kelvin).
 import { z } from 'zod'
 import { formatNumber } from './math.ts'
 import { defineTool, ToolError } from './types.ts'
@@ -8,11 +9,15 @@ type Dimension = 'length' | 'mass' | 'volume' | 'area' | 'speed' | 'time' | 'dat
 
 interface Unit {
   dim: Dimension
-  /** Multiply by this to get the base unit (metre, kilogram, litre, ...). */
+  /** Multiply by this to get the base unit (metre, kilogram, litre, kelvin ...). */
   factor: number
+  /** Added after multiplying; only temperatures have one. */
+  offset: number
 }
 
-const U = (dim: Dimension, factor: number, ...names: string[]): [string, Unit][] => names.map((n) => [n, { dim, factor }])
+const U = (dim: Dimension, factor: number, ...names: string[]): [string, Unit][] => names.map((n) => [n, { dim, factor, offset: 0 }])
+const T = (factor: number, offset: number, ...names: string[]): [string, Unit][] =>
+  names.map((n) => [n, { dim: 'temperature', factor, offset }])
 
 const UNITS = new Map<string, Unit>([
   // length, base metre
@@ -94,41 +99,27 @@ const UNITS = new Map<string, Unit>([
   ...U('energy', 3600, 'wh', 'watt hour', 'watt hours'),
   ...U('energy', 3.6e6, 'kwh', 'kilowatt hour', 'kilowatt hours'),
   ...U('energy', 1055.05585262, 'btu'),
-  // temperature: factor unused
-  ...U('temperature', 1, 'c', '°c', 'celsius', 'degc'),
-  ...U('temperature', 1, 'f', '°f', 'fahrenheit', 'degf'),
-  ...U('temperature', 1, 'k', 'kelvin'),
+  // temperature, base kelvin
+  ...T(1, 273.15, 'c', '°c', 'celsius', 'degc', 'centigrade'),
+  ...T(5 / 9, (459.67 * 5) / 9, 'f', '°f', 'fahrenheit', 'degf'),
+  ...T(1, 0, 'k', 'kelvin', 'kelvins'),
 ])
 
-function lookup(name: string): [string, Unit] {
+function lookup(name: string): Unit {
   const key = name.trim().toLowerCase().replace(/\s+/g, ' ').replace('²', '2').replace('³', '3')
-  const u = UNITS.get(key) ?? UNITS.get(key.replace(/^degrees? /, '')) ?? UNITS.get(key.replace(/s$/, ''))
+  const bare = key.replace(/^(degrees?|deg) /, '')
+  const u = UNITS.get(key) ?? UNITS.get(bare) ?? UNITS.get(bare.replace(/s$/, ''))
   if (!u) throw new ToolError(`unknown unit "${name}"`)
-  return [key, u]
-}
-
-function toKelvin(v: number, unit: string): number {
-  if (unit.endsWith('c') || unit === 'celsius') return v + 273.15
-  if (unit.endsWith('f') || unit === 'fahrenheit') return ((v - 32) * 5) / 9 + 273.15
-  return v
-}
-
-function fromKelvin(k: number, unit: string): number {
-  if (unit.endsWith('c') || unit === 'celsius') return k - 273.15
-  if (unit.endsWith('f') || unit === 'fahrenheit') return ((k - 273.15) * 9) / 5 + 32
-  return k
+  return u
 }
 
 export function convertUnits(value: number, from: string, to: string): number {
-  const [fk, fu] = lookup(from)
-  const [tk, tu] = lookup(to)
-  if (fu.dim !== tu.dim) throw new ToolError(`cannot convert ${fu.dim} (${from}) to ${tu.dim} (${to})`)
-  if (fu.dim === 'temperature') {
-    const k = toKelvin(value, fk)
-    if (k < 0) throw new ToolError('that is below absolute zero')
-    return fromKelvin(k, tk)
-  }
-  return (value * fu.factor) / tu.factor
+  const f = lookup(from)
+  const t = lookup(to)
+  if (f.dim !== t.dim) throw new ToolError(`cannot convert ${f.dim} (${from}) to ${t.dim} (${to})`)
+  const base = value * f.factor + f.offset
+  if (f.dim === 'temperature' && base < 0) throw new ToolError('that is below absolute zero')
+  return (base - t.offset) / t.factor
 }
 
 export const units = defineTool({
