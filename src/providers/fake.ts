@@ -33,6 +33,8 @@ export function fakeProvider(steps: FakeStep[] = []): Provider & { requests: Cha
 }
 
 function echo(req: ChatRequest): Partial<ChatResponse> {
-  const last = [...req.turns].reverse().find((t) => t.role === 'user')
-  return { text: `You asked: ${last?.role === 'user' ? last.text : ''}` }
+  const users = req.turns.filter((t) => t.role === 'user')
+  const last = users.at(-1)
+  const earlier = req.turns.length - 1
+  return { text: `You asked: ${last?.role === 'user' ? last.text : ''}${earlier > 0 ? ` (with ${earlier} earlier messages)` : ''}` }
 }

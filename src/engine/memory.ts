@@ -37,6 +37,10 @@ export class LruMap<V> {
     }
   }
 
+  delete(key: string): void {
+    this.m.delete(key)
+  }
+
   has(key: string): boolean {
     return this.get(key) !== undefined
   }

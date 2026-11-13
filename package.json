@@ -2,7 +2,7 @@
   "name": "mnemo",
   "version": "0.1.0",
   "description": "Mnemo, a self-hosted AI helper bot for Mnema Talk: bring your own AI provider and key.",
-  "license": "AGPL-3.0-or-later",
+  "license": "AGPL-3.0-only",
   "private": true,
   "type": "module",
   "homepage": "https://github.com/msch128/mnema-talk-mnemo-bot",
@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.8.0",
+    "mnema-talk-sdk": "file:vendor/mnema-talk-sdk-3.0.11.tgz",
     "openai": "7.56.0",
     "zod": "4.6.7"
   },
