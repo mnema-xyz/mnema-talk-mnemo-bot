@@ -2,7 +2,7 @@
 // Mnema Talk, serve the health endpoint, and shut down cleanly on SIGTERM.
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
-import { Client, Intents, RestError } from 'mnema-talk-sdk'
+import { Client, Intents } from 'mnema-talk-sdk'
 import pkg from '../package.json' with { type: 'json' }
 import { MnemoBot } from './bot/bot.ts'
 import { ConfigError, loadConfig } from './config.ts'
@@ -10,6 +10,7 @@ import { Engine } from './engine/engine.ts'
 import { Budget, RateLimiter } from './engine/limits.ts'
 import { DEFAULT_PERSONA } from './engine/prompt.ts'
 import { startHealthServer } from './health.ts'
+import { afterClose, onConnectError } from './lifecycle.ts'
 import { createLogger } from './log.ts'
 import { createProvider } from './providers/index.ts'
 import { selectTools } from './tools/index.ts'
@@ -78,9 +79,17 @@ client.on('ready', () => {
 client.on('resumed', () => {
   connected = true
 })
+let stopping = false
 client.on('close', (info) => {
   connected = false
   log.warn('disconnected', { code: info.code, reason: info.reason, reconnecting: info.reconnect })
+  const v = afterClose(info, stopping)
+  if (v.action === 'exit') {
+    // The SDK gives up on this close; staying up would be an offline bot
+    // with a 503 health check. Exit so that Docker restarts Mnemo.
+    log.error('gateway_closed_for_good', { code: info.code, hint: v.hint })
+    process.exit(1)
+  }
 })
 client.on('error', (err) => {
   log.error('client_error', { error: err })
@@ -104,7 +113,6 @@ log.info('starting', {
   health: health ? `${config.healthHost}:${config.healthPort}` : 'off',
 })
 
-let stopping = false
 async function shutdown(signal: string): Promise<void> {
   if (stopping) return
   stopping = true
@@ -129,8 +137,9 @@ for (let attempt = 1; ; attempt++) {
     await client.connect()
     break
   } catch (err) {
-    if (err instanceof RestError && (err.status === 401 || err.status === 403)) {
-      log.error('token_refused', { status: err.status, hint: 'check MNEMA_TOKEN, or regenerate it in Admin area > Bots' })
+    const v = onConnectError(err)
+    if (v.action === 'exit') {
+      log.error('connect_refused', { error: err, hint: v.hint })
       process.exit(1)
     }
     const seconds = Math.min(60, 2 ** Math.min(attempt, 6))

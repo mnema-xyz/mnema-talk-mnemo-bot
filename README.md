@@ -397,9 +397,9 @@ something goes wrong.
 | Symptom | Cause and fix |
 |---|---|
 | Mnemo exits at once with `configuration has N problems` | Read the list: each line names the variable to fix |
-| Log shows `token_refused` and Mnemo exits | The token is wrong or revoked, or the bot is disabled or banned. Regenerate the token in Admin area > Bots |
+| Mnemo exits with `connect_refused` at start | The log's `hint` says why: the token was refused (wrong, revoked, the bot disabled or banned: regenerate it in Admin area > Bots), or the gateway refused the intents (allow `GUILD_MESSAGES` in Admin area > Bots). Waiting does not fix either, so Mnemo does not retry |
 | Log repeats `connect_failed` | Mnema Talk is not reachable at `MNEMA_URL` (yet). Mnemo keeps retrying with backoff up to once a minute |
-| Log shows close code `4014` | The bot's allowed intents lack `GUILD_MESSAGES`. Allow it in Admin area > Bots |
+| Mnemo exits with `gateway_closed_for_good` while running | The server closed the connection for good, typically because the token was regenerated or revoked, or the bot was disabled, banned or lost an intent. Mnemo exits with code 1 so that Docker restarts it and the next start says what is wrong |
 | Mnemo is online but does not react to a mention | The channel is not one you ticked, so Mnemo cannot see it. Allow its role in the channel, or check `MNEMO_ALLOWED_CHANNELS`. Also check that you picked Mnemo from the mention list, so that it is a real mention |
 | `/ask` is not in the command list | The command shows only where the bot can view and send. If an admin disabled it in Admin area > Bots, it stays off |
 | Running `/ask` fails because the bot is not connected | Mnemo is not running, or not yet connected. Check its log and `/healthz` |
