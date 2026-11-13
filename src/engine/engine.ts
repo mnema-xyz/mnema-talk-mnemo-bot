@@ -124,8 +124,17 @@ export class Engine {
     const toolsUsed: ToolUse[] = []
     let text = ''
 
+    const specsChars = JSON.stringify(specs).length
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      if (round > 0 && !this.d.budget.hasRoom()) break
+      // Hold this call's worst case in the budget until it reports its usage.
+      const reservation = this.d.budget.reserve({
+        inputTokens: estimateTokens(system.length + specsChars + turnsChars(turns)),
+        outputTokens: s.maxOutputTokens,
+      })
+      if (!reservation) {
+        if (round === 0) return budgetRefusal(this.now())
+        break
+      }
       let res
       try {
         res = await this.d.provider.chat({
@@ -136,6 +145,8 @@ export class Engine {
           signal: AbortSignal.timeout(s.providerTimeoutMs),
         })
       } catch (err) {
+        // A failed call reports no usage; most fail before the model runs.
+        reservation.settle({ inputTokens: 0, outputTokens: 0 })
         const message = err instanceof ProviderError ? err.message : 'the AI provider call failed'
         const pe = err instanceof ProviderError ? err : undefined
         this.d.log.warn('provider_error', { provider: this.d.provider.name, status: pe?.status, message, detail: pe?.detail })
@@ -143,7 +154,7 @@ export class Engine {
       }
       usage.inputTokens += res.usage.inputTokens
       usage.outputTokens += res.usage.outputTokens
-      this.d.budget.add(res.usage)
+      reservation.settle(res.usage)
       text = res.text
 
       if (res.stop === 'refusal') {
@@ -213,6 +224,21 @@ function budgetRefusal(now: Date): Refusal {
     retryMs: midnight - now.getTime(),
     text: 'I have used up today\'s budget for answers. It resets at midnight UTC; ask again then.',
   }
+}
+
+/** A rough, generous token count for text: about 3 characters per token. */
+function estimateTokens(chars: number): number {
+  return Math.ceil(chars / 3)
+}
+
+function turnsChars(turns: Turn[]): number {
+  let n = 0
+  for (const t of turns) {
+    if (t.role === 'tool') for (const r of t.results) n += r.content.length
+    else n += t.text.length
+    if (t.role === 'assistant') n += JSON.stringify(t.toolCalls).length + (t.raw === undefined ? 0 : JSON.stringify(t.raw).length)
+  }
+  return n
 }
 
 /** A display name is user-controlled text: keep it short and on one line. */

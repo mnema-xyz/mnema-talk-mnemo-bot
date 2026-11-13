@@ -207,7 +207,7 @@ file refuses them. Mnemo never logs them.
 |---|---|---|
 | `MNEMO_HEALTH_PORT` | `8080` | Port of the health endpoint (`0` = off) |
 | `MNEMO_HEALTH_HOST` | `127.0.0.1` | Address of the health endpoint; `0.0.0.0` to reach it from outside the container |
-| `MNEMO_DATA_DIR` | *(none; `/data` in Docker)* | Where the day's budget survives a restart |
+| `MNEMO_DATA_DIR` | `data` (`/data` in Docker) | Where the day's budget survives a restart |
 | `MNEMO_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `MNEMO_CONFIG` | | A JSON config file |
 
@@ -355,12 +355,18 @@ current prices.
 Guards keep a busy channel or a curious member from running up a bill:
 
 - **Rate limits**: 5 questions per member and 20 per channel per minute by
-  default. Over the limit, Mnemo says how long to wait.
+  default. Over the limit, Mnemo says how long to wait: privately for `/ask`
+  and the buttons, and once per member and minute for mentions (further
+  mentions in that minute are dropped quietly).
 - **Daily budget**: 1,000,000 tokens per UTC day by default (about $0.10 to
   $0.15 a day on Haiku if it is used up). Set `MNEMO_DAILY_COST_BUDGET_USD` for
   a limit in dollars. When it is used up, Mnemo says so and answers again
-  after midnight UTC. The count survives restarts when `MNEMO_DATA_DIR` is
-  set (it is in Docker).
+  after midnight UTC. The budget is hard: before each model call Mnemo
+  reserves that call's worst case (an estimate of the input plus
+  `MNEMO_MAX_OUTPUT_TOKENS`) and settles it with the real usage afterwards, so
+  questions asked at the same time cannot overshoot it together. The last few
+  thousand tokens of a day can therefore stay unused. The count survives
+  restarts (`budget.json` in `MNEMO_DATA_DIR`).
 - **Tool calls**: at most `MNEMO_MAX_TOOL_CALLS` per question, and at most 8
   model calls per question in any case.
 - **Timeouts**: one provider call (`MNEMO_PROVIDER_TIMEOUT_MS`) and one tool

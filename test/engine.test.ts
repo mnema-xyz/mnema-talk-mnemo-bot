@@ -128,13 +128,38 @@ describe('Engine', () => {
   })
 
   it('refuses with a clear message when the daily budget is used up', async () => {
-    const budget = new Budget({ dailyTokens: 30, dailyCostUsd: 0, inputUsdPerMTok: 0, outputUsdPerMTok: 0 })
+    const budget = new Budget({ dailyTokens: 100_000, dailyCostUsd: 0, inputUsdPerMTok: 0, outputUsdPerMTok: 0 })
     const e = engine(fakeProvider(), {}, budget)
-    assert.equal((await e.ask({ ...ask, question: 'one' })).kind, 'answer') // 15 tokens
-    assert.equal((await e.ask({ ...ask, userId: 'u2', question: 'two' })).kind, 'answer') // 30 tokens
+    assert.equal((await e.ask({ ...ask, question: 'one' })).kind, 'answer')
+    budget.add({ inputTokens: 98_000, outputTokens: 0 }) // too little left for a call's estimate
     const r = await e.ask({ ...ask, userId: 'u3', question: 'three' })
     assert.equal(r.kind === 'refused' && r.reason, 'budget')
     assert.match(r.text, /used up today's budget/)
+  })
+
+  it('cannot overshoot the budget with questions asked at the same time', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((r) => (release = r))
+    let calls = 0
+    const slow: Provider = {
+      name: 'slow',
+      model: 'm',
+      chat: async () => {
+        calls++
+        await gate
+        return { text: 'done', toolCalls: [], stop: 'end', usage: { inputTokens: 500, outputTokens: 100 } }
+      },
+    }
+    // Room for one call's estimate (the input estimate plus 3000 output tokens), not two.
+    const budget = new Budget({ dailyTokens: 6000, dailyCostUsd: 0, inputUsdPerMTok: 0, outputUsdPerMTok: 0 })
+    const e = engine(slow, { maxOutputTokens: 3000 }, budget)
+    const both = Promise.all([e.ask({ ...ask, question: 'one' }), e.ask({ ...ask, userId: 'u2', question: 'two' })])
+    await new Promise((r) => setTimeout(r, 20))
+    release()
+    const [a, b] = await both
+    assert.equal(calls, 1)
+    assert.deepEqual([a.kind, b.kind].sort(), ['answer', 'refused'])
+    assert.equal(budget.snapshot().inputTokens, 500)
   })
 
   it('turns provider failures and refusals into plain answers', async () => {

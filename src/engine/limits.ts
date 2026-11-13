@@ -73,9 +73,21 @@ interface DayUsage {
   outputTokens: number
 }
 
-/** The day's spend, reset at midnight UTC. */
+/** A call's estimated usage, held until the call reports what it used. */
+export interface Reservation {
+  /** Replaces the estimate with the real usage; later calls are ignored. */
+  settle(actual: Usage): void
+}
+
+/**
+ * The day's spend, reset at midnight UTC. Before each provider call the
+ * engine reserves the call's estimated usage; a call that would not fit next
+ * to the spent and the reserved tokens is not made, so questions running at
+ * the same time cannot overshoot together.
+ */
 export class Budget {
   private usage: DayUsage
+  private reserved = { inputTokens: 0, outputTokens: 0 }
   private readonly s: BudgetSettings
   private readonly now: () => Date
   constructor(s: BudgetSettings, now: () => Date = () => new Date()) {
@@ -98,11 +110,37 @@ export class Budget {
     return (u.inputTokens * this.s.inputUsdPerMTok + u.outputTokens * this.s.outputUsdPerMTok) / 1_000_000
   }
 
-  /** True while there is budget left for another provider call. */
+  /** True while anything is left (spent and reserved below the limits). */
   hasRoom(): boolean {
+    return this.fits({ inputTokens: 0, outputTokens: 0 }, false)
+  }
+
+  /** Reserves an estimate, or answers undefined when it does not fit. */
+  reserve(estimate: Usage): Reservation | undefined {
+    if (!this.fits(estimate, true)) return undefined
+    this.reserved.inputTokens += estimate.inputTokens
+    this.reserved.outputTokens += estimate.outputTokens
+    let open = true
+    return {
+      settle: (actual: Usage) => {
+        if (!open) return
+        open = false
+        this.reserved.inputTokens -= estimate.inputTokens
+        this.reserved.outputTokens -= estimate.outputTokens
+        this.add(actual)
+      },
+    }
+  }
+
+  private fits(extra: Usage, inclusive: boolean): boolean {
     const u = this.current()
-    if (this.s.dailyTokens > 0 && u.inputTokens + u.outputTokens >= this.s.dailyTokens) return false
-    if (this.s.dailyCostUsd > 0 && this.costUsd(u) >= this.s.dailyCostUsd) return false
+    const total = {
+      inputTokens: u.inputTokens + this.reserved.inputTokens + extra.inputTokens,
+      outputTokens: u.outputTokens + this.reserved.outputTokens + extra.outputTokens,
+    }
+    const over = (used: number, limit: number) => (inclusive ? used > limit : used >= limit)
+    if (this.s.dailyTokens > 0 && over(total.inputTokens + total.outputTokens, this.s.dailyTokens)) return false
+    if (this.s.dailyCostUsd > 0 && over(this.costUsd(total), this.s.dailyCostUsd)) return false
     return true
   }
 

@@ -27,6 +27,7 @@ describe('config', () => {
     assert.equal(c.priceInputPerMTok, 0.1)
     assert.ok(c.tools.includes('weather'))
     assert.deepEqual(c.allowedChannels, [])
+    assert.equal(c.dataDir, 'data', 'the budget survives restarts by default')
   })
 
   it('names every missing or wrong variable at once', () => {

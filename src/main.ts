@@ -38,7 +38,7 @@ const budget = new Budget({
   dailyCostUsd: config.dailyCostBudgetUsd,
   inputUsdPerMTok: config.priceInputPerMTok,
   outputUsdPerMTok: config.priceOutputPerMTok,
-  stateFile: config.dataDir ? join(config.dataDir, 'budget.json') : undefined,
+  stateFile: join(config.dataDir, 'budget.json'),
 })
 const engine = new Engine({
   provider,

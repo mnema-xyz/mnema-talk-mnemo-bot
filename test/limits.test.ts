@@ -59,6 +59,26 @@ describe('Budget', () => {
     assert.equal(b.snapshot().costUsd.toFixed(3), '0.010')
   })
 
+  it('reserves the estimate of a call in flight, so concurrent calls cannot overshoot', () => {
+    const b = new Budget({ ...base, dailyTokens: 10_000 })
+    const first = b.reserve({ inputTokens: 4000, outputTokens: 2000 })
+    assert.ok(first)
+    assert.equal(b.reserve({ inputTokens: 4000, outputTokens: 2000 }), undefined, 'the second does not fit next to the first')
+    first.settle({ inputTokens: 900, outputTokens: 100 })
+    assert.equal(b.snapshot().inputTokens, 900)
+    const second = b.reserve({ inputTokens: 4000, outputTokens: 2000 })
+    assert.ok(second, 'settling released the rest of the estimate')
+    second.settle({ inputTokens: 0, outputTokens: 0 })
+    second.settle({ inputTokens: 5000, outputTokens: 0 }) // a second settle is ignored
+    assert.equal(b.snapshot().inputTokens, 900)
+  })
+
+  it('reserves against the cost budget as well', () => {
+    const b = new Budget({ ...base, dailyCostUsd: 0.01 }) // $1 in, $5 out per MTok
+    assert.ok(b.reserve({ inputTokens: 1000, outputTokens: 1000 })) // $0.006
+    assert.equal(b.reserve({ inputTokens: 1000, outputTokens: 1000 }), undefined)
+  })
+
   it('survives a restart through the state file, for the same day only', () => {
     const file = join(mkdtempSync(join(tmpdir(), 'mnemo-')), 'budget.json')
     const now = () => new Date('2026-11-13T10:00:00Z')

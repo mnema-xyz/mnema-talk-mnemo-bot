@@ -203,7 +203,9 @@
       "type": "string"
     },
     "dataDir": {
-      "type": "string"
+      "default": "data",
+      "type": "string",
+      "minLength": 1
     },
     "logLevel": {
       "default": "info",

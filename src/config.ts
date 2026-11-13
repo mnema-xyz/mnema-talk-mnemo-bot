@@ -47,7 +47,7 @@ export const SettingsSchema = z.object({
   systemPromptFile: z.string().min(1).optional(),
   healthPort: int(0, 65535).default(8080),
   healthHost: z.string().default('127.0.0.1'),
-  dataDir: z.string().optional(),
+  dataDir: z.string().min(1).default('data'),
   logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 })
 
