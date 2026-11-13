@@ -163,12 +163,13 @@ function readFileConfig(path: string, problems: string[]): Record<string, unknow
   const obj: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     if (k === '$schema') continue
-    if (/token|apikey|secret|password/i.test(k)) {
-      problems.push(`config file: "${k}" looks like a secret; secrets go in the environment (${Object.values(SECRETS).join(', ')}) or *_FILE`)
-    } else if (!(k in ENV)) {
-      problems.push(`config file: unknown setting "${k}"`)
-    } else {
+    if (k in ENV) {
       obj[k] = v
+    } else if (/token|key|secret|password/i.test(k)) {
+      // Not a setting, and named like one of the secrets: say where it goes.
+      problems.push(`config file: "${k}" looks like a secret; secrets go in the environment (${Object.values(SECRETS).join(', ')}) or *_FILE`)
+    } else {
+      problems.push(`config file: unknown setting "${k}"`)
     }
   }
   return obj
