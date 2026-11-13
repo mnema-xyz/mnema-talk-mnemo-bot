@@ -54,3 +54,65 @@ describe('provider errors', () => {
     assert.doesNotMatch(JSON.stringify(err), new RegExp(KEY))
   })
 })
+
+describe('OpenAI provider (Responses API)', () => {
+  it('sends tools as functions, replays the output items, and returns the tool call and the answer', async () => {
+    const first = {
+      id: 'resp_1', object: 'response', status: 'completed', model: 'm', incomplete_details: null,
+      output: [
+        { type: 'reasoning', id: 'rs_1', summary: [], encrypted_content: 'opaque' },
+        { type: 'function_call', id: 'fc_1', call_id: 'call_1', name: 'weather', arguments: '{"place":"Marbella"}', status: 'completed' },
+      ],
+      usage: { input_tokens: 120, output_tokens: 30, total_tokens: 150, input_tokens_details: { cached_tokens: 0 }, output_tokens_details: { reasoning_tokens: 10 } },
+    }
+    const second = {
+      id: 'resp_2', object: 'response', status: 'completed', model: 'm', incomplete_details: null,
+      output: [{ type: 'message', id: 'msg_1', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: 'It is 18 °C.', annotations: [] }] }],
+      usage: { input_tokens: 200, output_tokens: 8, total_tokens: 208, input_tokens_details: { cached_tokens: 0 }, output_tokens_details: { reasoning_tokens: 0 } },
+    }
+    const bodies: Record<string, unknown>[] = []
+    const urls: string[] = []
+    let n = 0
+    const fetch = ((url: string | URL | Request, init?: RequestInit) => {
+      urls.push(url instanceof Request ? url.url : url.toString())
+      bodies.push(JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as Record<string, unknown>)
+      return Promise.resolve(Response.json(n++ === 0 ? first : second))
+    }) as typeof globalThis.fetch
+    const p = openaiProvider({ name: 'openai', apiKey: KEY, model: 'm', timeoutMs: 5000, fetch })
+    const tools = [{ name: 'weather', description: 'Weather', inputSchema: { type: 'object', properties: { place: { type: 'string' } } } }]
+
+    const r1 = await p.chat({ ...req(), tools })
+    assert.equal(r1.stop, 'tool_use')
+    assert.deepEqual(r1.toolCalls, [{ id: 'call_1', name: 'weather', input: { place: 'Marbella' } }])
+    assert.deepEqual(r1.usage, { inputTokens: 120, outputTokens: 30 })
+    assert.match(urls[0] ?? '', /\/responses$/)
+    assert.equal(bodies[0]?.store, false)
+    assert.equal(bodies[0]?.instructions, 'You are Mnemo.')
+    assert.deepEqual((bodies[0]?.tools as unknown[])[0], { type: 'function', name: 'weather', description: 'Weather', parameters: tools[0]?.inputSchema, strict: false })
+
+    const r2 = await p.chat({
+      ...req(),
+      tools,
+      turns: [
+        { role: 'user', text: 'hi' },
+        { role: 'assistant', text: '', toolCalls: r1.toolCalls, raw: r1.raw },
+        { role: 'tool', results: [{ id: 'call_1', name: 'weather', content: '{"t":18}', isError: false }] },
+      ],
+    })
+    assert.equal(r2.text, 'It is 18 °C.')
+    assert.equal(r2.stop, 'end')
+    const input = bodies[1]?.input as Record<string, unknown>[]
+    assert.deepEqual(input.map((i) => i.type ?? i.role), ['user', 'reasoning', 'function_call', 'function_call_output'])
+    assert.equal(input[1]?.encrypted_content, 'opaque', 'reasoning goes back unchanged')
+    assert.deepEqual(input[3], { type: 'function_call_output', call_id: 'call_1', output: '{"t":18}' })
+  })
+
+  it('reports a cut answer and a refusal', async () => {
+    const cut = { id: 'r', object: 'response', status: 'incomplete', model: 'm', incomplete_details: { reason: 'max_output_tokens' }, output: [{ type: 'message', id: 'x', role: 'assistant', status: 'incomplete', content: [{ type: 'output_text', text: 'Part', annotations: [] }] }], usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2, input_tokens_details: { cached_tokens: 0 }, output_tokens_details: { reasoning_tokens: 0 } } }
+    const p1 = openaiProvider({ name: 'openai', apiKey: KEY, model: 'm', timeoutMs: 5000, fetch: (() => Promise.resolve(Response.json(cut))) as typeof globalThis.fetch })
+    assert.equal((await p1.chat(req())).stop, 'max_tokens')
+    const refused = { ...cut, status: 'completed', incomplete_details: null, output: [{ type: 'message', id: 'x', role: 'assistant', status: 'completed', content: [{ type: 'refusal', refusal: 'no' }] }] }
+    const p2 = openaiProvider({ name: 'openai', apiKey: KEY, model: 'm', timeoutMs: 5000, fetch: (() => Promise.resolve(Response.json(refused))) as typeof globalThis.fetch })
+    assert.equal((await p2.chat(req())).stop, 'refusal')
+  })
+})

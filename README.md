@@ -248,14 +248,20 @@ MNEMO_API_KEY=sk-...
 MNEMO_MODEL=<a current model from your account's model list>
 ```
 
-Mnemo uses the Chat Completions API with tools. Pick a small, current model:
-Mnemo's questions are short, and tools do the exact parts.
+Mnemo uses OpenAI's **Responses API** with function tools, so every OpenAI
+model that can call functions works, also those that cannot call tools
+through Chat Completions (OpenAI's docs name GPT-6 Astra and GPT-6.1 Sol).
+Nothing is stored at OpenAI between calls (`store: false`). Pick a small,
+current model: Mnemo's questions are short, and tools do the exact parts.
 
 ### Any OpenAI-compatible server
 
-Ollama, LM Studio, vLLM, OpenRouter, LiteLLM and others speak the same API.
-Set the base URL (the part before `/chat/completions`) and the model name
-that the server knows. The model must support tool calling.
+Ollama, LM Studio, vLLM, OpenRouter, LiteLLM and others speak OpenAI's Chat
+Completions API, which Mnemo uses for them. Set the base URL (the part before
+`/chat/completions`) and the model name that the server knows. The model must
+support tool calling through Chat Completions: GPT-6 Astra and GPT-6.1 Sol do
+not (OpenAI's docs), so reach those with `MNEMO_PROVIDER=openai`, not through
+a proxy.
 
 ```sh
 # Ollama on the same machine (ollama pull <model> first)

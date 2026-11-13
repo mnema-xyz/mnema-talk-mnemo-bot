@@ -1,11 +1,13 @@
-// OpenAI's Chat Completions API with tools, through the official SDK.
-// The same file serves every OpenAI-compatible server (Ollama, OpenRouter,
-// LM Studio, vLLM, ...): they differ only in the base URL and the key.
+// OpenAI through the official SDK: the Responses API for OpenAI itself
+// (openai-responses.ts), Chat Completions with tools for every
+// OpenAI-compatible server (Ollama, OpenRouter, LM Studio, vLLM, ...), which
+// differ only in the base URL and the key.
 import OpenAI from 'openai'
+import { chatViaResponses } from './openai-responses.ts'
 import { errorDetail, ProviderError, type ChatRequest, type ChatResponse, type Provider, type StopReason, type ToolCall, type Turn } from './types.ts'
 
 export interface OpenAIOptions {
-  /** `openai` or `openai-compatible`; only changes the name in logs. */
+  /** `openai` (Responses API) or `openai-compatible` (Chat Completions). */
   name: string
   apiKey: string
   model: string
@@ -30,16 +32,21 @@ export function openaiProvider(opts: OpenAIOptions): Provider {
     name: opts.name,
     model: opts.model,
     async chat(req: ChatRequest): Promise<ChatResponse> {
+      if (opts.name === 'openai') {
+        try {
+          return await chatViaResponses(client, opts.model, req)
+        } catch (err) {
+          throw toProviderError(err)
+        }
+      }
       let res: OpenAI.Chat.Completions.ChatCompletion
       try {
         res = await client.chat.completions.create(
           {
             model: opts.model,
-            // OpenAI renamed the field; many compatible servers know only the old name.
-            ...(opts.name === 'openai'
-              ? { max_completion_tokens: req.maxOutputTokens }
-              : // eslint-disable-next-line @typescript-eslint/no-deprecated -- compatible servers still need it
-                { max_tokens: req.maxOutputTokens }),
+            // Compatible servers know the old name; OpenAI itself goes through Responses.
+            // eslint-disable-next-line @typescript-eslint/no-deprecated -- compatible servers still need it
+            max_tokens: req.maxOutputTokens,
             messages: [{ role: 'system', content: req.system }, ...toMessages(req.turns)],
             ...(req.tools.length > 0
               ? {
