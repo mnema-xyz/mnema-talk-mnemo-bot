@@ -5,10 +5,10 @@
   "license": "AGPL-3.0-only",
   "private": true,
   "type": "module",
-  "homepage": "https://github.com/msch128/mnema-talk-mnemo-bot",
+  "homepage": "https://github.com/mnema-xyz/mnema-talk-mnemo-bot",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/msch128/mnema-talk-mnemo-bot.git"
+    "url": "git+https://github.com/mnema-xyz/mnema-talk-mnemo-bot.git"
   },
   "engines": {
     "node": ">=24"

@@ -57,7 +57,7 @@ send messages and add reactions, and to receive messages through the
 `GUILD_MESSAGES` intent). Build the add link for your server:
 
 ```sh
-git clone https://github.com/msch128/mnema-talk-mnemo-bot.git
+git clone https://github.com/mnema-xyz/mnema-talk-mnemo-bot.git
 cd mnema-talk-mnemo-bot
 npm ci
 npm run add-link -- https://talk.example.org

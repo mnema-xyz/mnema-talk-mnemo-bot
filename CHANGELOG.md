@@ -41,5 +41,5 @@ that release.
 - No answer notifies anyone (`allowed_mentions` with an empty `parse` list).
 - An integration test against a real Mnema Talk, and a release check for tags.
 
-[Unreleased]: https://github.com/msch128/mnema-talk-mnemo-bot/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/msch128/mnema-talk-mnemo-bot/releases/tag/v0.1.0
+[Unreleased]: https://github.com/mnema-xyz/mnema-talk-mnemo-bot/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/mnema-xyz/mnema-talk-mnemo-bot/releases/tag/v0.1.0

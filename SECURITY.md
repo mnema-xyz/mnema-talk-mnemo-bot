@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please report vulnerabilities privately through GitHub's
-[private vulnerability reporting](https://github.com/msch128/mnema-talk-mnemo-bot/security/advisories/new),
+[private vulnerability reporting](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/security/advisories/new),
 not in a public issue. Include what an attacker can do, the steps to
 reproduce it, and the version or commit. You will get an answer within a
 few days.
