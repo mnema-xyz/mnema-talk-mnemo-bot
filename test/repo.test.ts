@@ -1,9 +1,29 @@
 // Repository hygiene that would otherwise only show up in a review.
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
+
+describe('release check', () => {
+  it('refuses a tag while the version placeholder or the vendored SDK is in place, and passes once both are gone', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mnemo-release-'))
+    writeFileSync(join(dir, 'README.md'), read('README.md'))
+    writeFileSync(join(dir, 'package.json'), read('package.json'))
+    const run = () => spawnSync('bash', [fileURLToPath(new URL('../scripts/release-check.sh', import.meta.url))], { cwd: dir, encoding: 'utf8' })
+    const now = run()
+    assert.equal(now.status, 1)
+    assert.match(now.stderr, /MNEMA_MIN_VERSION/)
+    assert.match(now.stderr, /vendor/)
+    writeFileSync(join(dir, 'README.md'), read('README.md').replaceAll('MNEMA_MIN_VERSION', '3.1.0'))
+    writeFileSync(join(dir, 'package.json'), read('package.json').replace(/"file:vendor\/[^"]+"/, '"https://github.com/msch128/mnema-talk/releases/download/v3.1.0/mnema-talk-sdk-3.1.0.tgz"'))
+    assert.equal(run().status, 0)
+  })
+})
 
 describe('repository', () => {
   it('names the Mnema Talk version Mnemo needs, before the quick start', () => {

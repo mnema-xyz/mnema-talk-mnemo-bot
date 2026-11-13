@@ -271,12 +271,13 @@ export function evaluate(expression: string): number {
 }
 
 /** Formats a result for people: whole numbers exactly while a double holds
- * them exactly (up to 2^53), anything else to 12 significant digits, so no
+ * them exactly (below 2^53), anything else to 12 significant digits, so no
  * digit is printed that the computation does not know. */
 export function formatNumber(v: number): string {
   if (Object.is(v, -0)) return '0'
-  if (Number.isInteger(v) && Math.abs(v) <= 2 ** 53) return String(v)
-  if (Math.abs(v) > 2 ** 53) return v.toPrecision(12).replace(/\.?0+e/, 'e')
+  // 2^53 itself is excluded: 2^53 + 1 rounds to it, so it is not exact.
+  if (Number.isSafeInteger(v)) return String(v)
+  if (Math.abs(v) >= 2 ** 53) return v.toPrecision(12).replace(/\.?0+e/, 'e')
   const s = Number(v.toPrecision(12))
   return String(s)
 }

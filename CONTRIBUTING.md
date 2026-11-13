@@ -54,3 +54,10 @@ talk to it. Keep a pull request to one subject. Add a line under
 
 By contributing you agree that your contribution is licensed under the
 [AGPL-3.0](LICENSE).
+
+## Releases
+
+A version is tagged `vX.Y.Z` on `main`. For a tag, CI runs
+`scripts/release-check.sh`, which fails while the README still has the
+`MNEMA_MIN_VERSION` placeholder or `package.json` still takes the SDK from
+`vendor/`: a release must not depend on unreleased Mnema Talk.

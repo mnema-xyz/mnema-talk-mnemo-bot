@@ -32,7 +32,9 @@ describe('math parser', () => {
   })
 
   it('never prints digits it does not know: integers above 2^53 get 12 significant digits', () => {
-    assert.equal(calc('2^53'), '9007199254740992')
+    assert.equal(calc('2^53 - 1'), '9007199254740991')
+    assert.equal(calc('2^53'), '9.00719925474e+15', '2^53 may stand for 2^53 + 1 as well')
+    assert.equal(calc('9007199254740993'), '9.00719925474e+15')
     assert.equal(calc('3^40'), '1.21576654591e+19')
     assert.equal(calc('99999999999999999'), '1e+17')
     assert.equal(calc('-(3^40)'), '-1.21576654591e+19')

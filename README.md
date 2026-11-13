@@ -373,11 +373,16 @@ Guards keep a busy channel or a curious member from running up a bill:
 - **Daily budget**: 1,000,000 tokens per UTC day by default (about $0.10 to
   $0.15 a day on Haiku if it is used up). Set `MNEMO_DAILY_COST_BUDGET_USD` for
   a limit in dollars. When it is used up, Mnemo says so and answers again
-  after midnight UTC. The budget is hard: before each model call Mnemo
-  reserves that call's worst case (an estimate of the input plus
-  `MNEMO_MAX_OUTPUT_TOKENS`) and settles it with the real usage afterwards, so
-  questions asked at the same time cannot overshoot it together. The last few
-  thousand tokens of a day can therefore stay unused. The count survives
+  after midnight UTC. Before each model call Mnemo reserves that call's
+  worst case and settles it with the usage the provider reports, so
+  questions asked at the same time do not overshoot it together. The worst
+  case is an estimate: the input at about 3 characters per token for Latin
+  text and one token per character for other scripts (CJK, Cyrillic, ...),
+  plus `MNEMO_MAX_OUTPUT_TOKENS`. A call that fails or times out is counted
+  at that worst case, because the provider may still bill it. The estimate
+  is generous but not exact, so treat the budget as a firm guard rather than
+  an accounting: the last few thousand tokens of a day can stay unused, and
+  an unusual input could still exceed its estimate. The count survives
   restarts (`budget.json` in `MNEMO_DATA_DIR`).
 - **Tool calls**: at most `MNEMO_MAX_TOOL_CALLS` per question, and at most 8
   model calls per question in any case.
@@ -415,7 +420,7 @@ something goes wrong.
 | Symptom | Cause and fix |
 |---|---|
 | Mnemo exits at once with `configuration has N problems` | Read the list: each line names the variable to fix |
-| Mnemo exits with `connect_refused` at start | The log's `hint` says why: the token was refused (wrong, revoked, the bot disabled or banned: regenerate it in Admin area > Bots), or the gateway refused the intents (allow `GUILD_MESSAGES` in Admin area > Bots). Waiting does not fix either, so Mnemo does not retry |
+| Mnemo exits at start with `connect_refused` or `gateway_closed_for_good` | The log's `hint` says why. `connect_refused`: the token was refused (wrong, revoked, the bot disabled or banned: regenerate it in Admin area > Bots). `gateway_closed_for_good`: the gateway refused the connection, for example code 4014 when the bot may not use `GUILD_MESSAGES` (allow it in Admin area > Bots). Waiting fixes neither, so Mnemo does not retry |
 | Log repeats `connect_failed` | Mnema Talk is not reachable at `MNEMA_URL` (yet). Mnemo keeps retrying with backoff up to once a minute |
 | Mnemo exits with `gateway_closed_for_good` while running | The server closed the connection for good, typically because the token was regenerated or revoked, or the bot was disabled, banned or lost an intent. Mnemo exits with code 1 so that Docker restarts it and the next start says what is wrong |
 | Mnemo is online but does not react to a mention | The channel is not one you ticked, so Mnemo cannot see it. Allow its role in the channel, or check `MNEMO_ALLOWED_CHANNELS`. Also check that you picked Mnemo from the mention list, so that it is a real mention |

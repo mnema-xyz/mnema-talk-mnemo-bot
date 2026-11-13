@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { Engine, type EngineSettings } from '../src/engine/engine.ts'
+import { Engine, estimateTokens, type EngineSettings } from '../src/engine/engine.ts'
 import { Budget, RateLimiter } from '../src/engine/limits.ts'
 import { silentLogger } from '../src/log.ts'
 import { fakeProvider, type FakeStep } from '../src/providers/fake.ts'
@@ -185,6 +185,21 @@ describe('Engine', () => {
     assert.equal(calls, 1)
     assert.deepEqual([a.kind, b.kind].sort(), ['answer', 'refused'])
     assert.equal(budget.snapshot().inputTokens, 500)
+  })
+
+  it('estimates input tokens generously, also for non-Latin text', () => {
+    assert.equal(estimateTokens('a'.repeat(300)), 100)
+    assert.ok(estimateTokens('天気'.repeat(1500)) >= 3000, 'CJK: at least one token per character')
+    assert.ok(estimateTokens('Привет мир '.repeat(100)) >= 900, 'one token per Cyrillic letter')
+  })
+
+  it('charges a failed call its reserved worst case, since the provider may have worked on it', async () => {
+    const budget = new Budget({ dailyTokens: 0, dailyCostUsd: 0, inputUsdPerMTok: 0, outputUsdPerMTok: 0 })
+    const failing: Provider = { name: 'x', model: 'm', chat: () => Promise.reject(new ProviderError('the AI provider timed out', undefined, true)) }
+    await engine(failing, { maxOutputTokens: 1000 }, budget).ask({ ...ask, question: 'q' })
+    const spent = budget.snapshot()
+    assert.equal(spent.outputTokens, 1000)
+    assert.ok(spent.inputTokens > 0)
   })
 
   it('turns provider failures and refusals into plain answers', async () => {
