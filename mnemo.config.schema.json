@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "mnemaUrl": {
+      "description": "Address of your Mnema Talk server, e.g. https://talk.example.org",
+      "type": "string",
+      "format": "uri"
+    },
+    "provider": {
+      "default": "anthropic",
+      "type": "string",
+      "enum": [
+        "anthropic",
+        "openai",
+        "openai-compatible",
+        "fake"
+      ]
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "anthropicEffort": {
+      "default": "low",
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "maxOutputTokens": {
+      "default": 4096,
+      "type": "integer",
+      "minimum": 256,
+      "maximum": 64000
+    },
+    "providerTimeoutMs": {
+      "default": 60000,
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 600000
+    },
+    "toolTimeoutMs": {
+      "default": 10000,
+      "type": "integer",
+      "minimum": 500,
+      "maximum": 120000
+    },
+    "maxToolCalls": {
+      "default": 6,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "tools": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "searchProvider": {
+      "type": "string",
+      "enum": [
+        "brave",
+        "tavily"
+      ]
+    },
+    "sendDisplayName": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "0",
+            "1",
+            "true",
+            "false",
+            "yes",
+            "no",
+            "on",
+            "off"
+          ]
+        }
+      ]
+    },
+    "allowedChannels": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "replyInThread": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "0",
+            "1",
+            "true",
+            "false",
+            "yes",
+            "no",
+            "on",
+            "off"
+          ]
+        }
+      ]
+    },
+    "memberLimitPerMinute": {
+      "default": 5,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    },
+    "channelLimitPerMinute": {
+      "default": 20,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "dailyTokenBudget": {
+      "default": 1000000,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000000000
+    },
+    "dailyCostBudgetUsd": {
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
+    "priceInputPerMTok": {
+      "type": "number",
+      "minimum": 0
+    },
+    "priceOutputPerMTok": {
+      "type": "number",
+      "minimum": 0
+    },
+    "threadMaxTurns": {
+      "default": 12,
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 100
+    },
+    "threadMaxChars": {
+      "default": 12000,
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 200000
+    },
+    "threadTtlHours": {
+      "default": 24,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 720
+    },
+    "systemPrompt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "systemPromptFile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "healthPort": {
+      "default": 8080,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "healthHost": {
+      "default": "127.0.0.1",
+      "type": "string"
+    },
+    "dataDir": {
+      "type": "string"
+    },
+    "logLevel": {
+      "default": "info",
+      "type": "string",
+      "enum": [
+        "debug",
+        "info",
+        "warn",
+        "error"
+      ]
+    }
+  },
+  "$id": "https://github.com/msch128/mnema-talk-mnemo-bot/mnemo.config.schema.json",
+  "title": "Mnemo configuration file",
+  "description": "Settings for Mnemo (MNEMO_CONFIG). Environment variables override it. Secrets never go here.",
+  "additionalProperties": false
+}

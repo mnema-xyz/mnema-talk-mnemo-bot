@@ -1,0 +1,37 @@
+# Mnemo next to a Mnema Talk server on the same host.
+#
+#   cp .env.example .env     # fill in MNEMA_URL, MNEMA_TOKEN and your AI provider
+#   docker compose up -d --build
+#
+# MNEMA_URL is your server's public address (https://talk.example.org), the
+# one members open. Mnemo only needs outbound access: to Mnema Talk, to your
+# AI provider and to the tools' services (Open-Meteo, Wikipedia).
+#
+# To reach Mnema Talk over its Docker network instead of the public address,
+# uncomment the two "networks" blocks and set MNEMA_URL=http://mnema-talk:8080
+# (the container name in Mnema Talk's docker-compose.yml). The gateway address
+# the server announces still comes from its PUBLIC_URL.
+services:
+  mnemo:
+    image: mnemo:local
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MNEMO_DATA_DIR: /data
+    volumes:
+      - mnemo-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # networks: [default, mnema-network]
+
+volumes:
+  mnemo-data:
+
+# networks:
+#   mnema-network:
+#     external: true

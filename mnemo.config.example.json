@@ -1,0 +1,14 @@
+{
+  "$schema": "./mnemo.config.schema.json",
+  "mnemaUrl": "https://talk.example.org",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "tools": ["weather", "calculator", "datetime", "convert_units", "wikipedia"],
+  "allowedChannels": [],
+  "sendDisplayName": false,
+  "memberLimitPerMinute": 5,
+  "channelLimitPerMinute": 20,
+  "dailyTokenBudget": 1000000,
+  "maxToolCalls": 6,
+  "threadMaxTurns": 12
+}
