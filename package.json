@@ -1,6 +1,6 @@
 {
   "name": "mnemo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Mnemo, a self-hosted AI helper bot for Mnema Talk: bring your own AI provider and key.",
   "license": "AGPL-3.0-only",
   "private": true,
