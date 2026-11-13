@@ -9,7 +9,8 @@ name: release
 #    workflow, so the image is built in this same workflow.
 # 3. The image job checks the tagged commit again (lint, types, tests), builds
 #    linux/amd64 and linux/arm64 and pushes ghcr.io/mnema-xyz/mnemo with the
-#    tags X.Y.Z, X.Y and latest, plus provenance and SBOM attestations.
+#    tags X.Y.Z, X.Y and latest, plus provenance and SBOM attestations, and
+#    signs the pushed digest with cosign (keyless, the workflow's identity).
 #
 # Run it by hand with a tag to build and push the image of an existing release.
 
@@ -60,6 +61,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write # keyless cosign signature (Sigstore), this job only
     env:
       IMAGE: ghcr.io/mnema-xyz/mnemo
       TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
@@ -120,6 +122,7 @@ jobs:
             org.opencontainers.image.revision=${{ steps.rev.outputs.sha }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: build
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -128,3 +131,12 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           provenance: mode=max
           sbom: true
+
+      # Signs the digest that was just pushed (all tags point at it) with the
+      # workflow's OIDC identity; verification is in the README.
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+
+      - name: Sign the image
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
