@@ -5,14 +5,14 @@
 #   docker run --env-file .env mnemo
 
 # node:24-alpine, pinned by digest; Dependabot proposes updates.
-FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS deps
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY vendor/ ./vendor/
 # Production dependencies only; no install scripts run.
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
 
-FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4
 ENV NODE_ENV=production \
     MNEMO_DATA_DIR=/data
 WORKDIR /app
