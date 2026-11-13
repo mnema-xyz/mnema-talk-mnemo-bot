@@ -49,15 +49,26 @@ MNEMA_SRC=../mnema-talk scripts/integration.sh
 ## Pull requests
 
 Describe what changes for the people who run Mnemo and for the members who
-talk to it. Keep a pull request to one subject. Add a line under
-*Unreleased* in [CHANGELOG.md](CHANGELOG.md).
+talk to it. Keep a pull request to one subject. Give it a conventional
+commit title (`feat:`, `fix:`, `docs:`, `chore:` ...): the title becomes the
+commit on `main`, and the changelog and the next version are made from those
+commits, so write it for the people who read the changelog.
 
 By contributing you agree that your contribution is licensed under the
 [AGPL-3.0](LICENSE).
 
 ## Releases
 
-A version is tagged `vX.Y.Z` on `main`. For a tag, CI runs
+Releases are automatic. After each merge to `main`, release-please opens or
+updates a release pull request that bumps the version and writes
+[CHANGELOG.md](CHANGELOG.md) from the conventional commits (`feat:` and `fix:`
+make a release; before 1.0 both bump the patch number, and a `!` or a
+`BREAKING CHANGE:` bumps the minor number). Merging that pull request creates
+the tag `vX.Y.Z` and the GitHub release, and the same workflow then builds the
+image for linux/amd64 and linux/arm64 and pushes it to
+`ghcr.io/mnema-xyz/mnemo` as `X.Y.Z`, `X.Y` and `latest`, with provenance
+and SBOM attestations. Before it builds, the workflow runs
 `scripts/release-check.sh`, which fails while the README still has the
 `MNEMA_MIN_VERSION` placeholder or `package.json` still takes the SDK from
-`vendor/`: a release must not depend on unreleased Mnema Talk.
+`vendor/`: a release must not depend on unreleased Mnema Talk. To build the
+image of an existing tag again, run the *release* workflow by hand with that tag.

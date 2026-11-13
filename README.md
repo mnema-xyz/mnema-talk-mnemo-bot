@@ -96,12 +96,16 @@ connection, the permissions and the buttons without any costs.
 
 ### 3. Run
 
-With Docker:
+With Docker, which pulls the published image `ghcr.io/mnema-xyz/mnemo`
+(linux/amd64 and linux/arm64):
 
 ```sh
-docker compose up -d --build
+docker compose up -d
 docker compose logs -f mnemo
 ```
+
+To build the image from this checkout instead, add the build file:
+`docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.
 
 Or with Node.js 24:
 
@@ -460,9 +464,14 @@ something goes wrong.
   answered.
 - **Reconnects**: the SDK keeps the connection with heartbeats, resumes
   after short drops and reconnects with backoff.
-- **Updates**: `git pull && docker compose up -d --build`. Dependabot keeps
-  the dependencies, the base image and the CI actions current in this
-  repository.
+- **Updates**: `docker compose pull && docker compose up -d`. The image tags
+  are `latest`, `X.Y` (follows patch releases) and `X.Y.Z` (fixed); to pin one
+  set `MNEMO_VERSION` in `.env`, for example `MNEMO_VERSION=0.1.2`. Read the
+  [changelog](CHANGELOG.md) before a new minor version. Your data lives in the
+  `mnemo-data` volume and survives updates. If you build from a checkout:
+  `git pull && docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.
+  Dependabot keeps the dependencies, the base image and the CI actions
+  current in this repository.
 - **One instance per bot token.** Two instances would both answer.
 
 ## Troubleshooting
