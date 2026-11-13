@@ -472,6 +472,17 @@ something goes wrong.
   `git pull && docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.
   Dependabot keeps the dependencies, the base image and the CI actions
   current in this repository.
+- **Verifying the image**: every release image is signed with cosign, keyless,
+  by this repository's release workflow:
+
+  ```sh
+  cosign verify ghcr.io/mnema-xyz/mnemo:0.1 \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    --certificate-identity-regexp '^https://github\.com/mnema-xyz/mnema-talk-mnemo-bot/'
+  ```
+
+  Use it before an unattended update, for example in a cron job that only
+  deploys images that verify. Images up to 0.1.2 are not signed.
 - **One instance per bot token.** Two instances would both answer.
 
 ## Troubleshooting
