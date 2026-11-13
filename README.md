@@ -129,7 +129,7 @@ type `/ask`. Nothing happens? See [Troubleshooting](#troubleshooting).
 | Write in a thread that Mnemo started (no mention needed) | Answers in the thread and remembers the conversation so far (bounded, see `MNEMO_THREAD_*`) |
 | Mention it inside somebody else's thread | Answers that one message there, with no earlier context, and does not follow that thread |
 | `/ask question:… [private:true]` | Answers in the channel, or only to you with `private` |
-| **Regenerate** | Writes a new answer to the same question. Only the person who asked can use it, at most `MNEMO_MAX_REGENERATIONS` times per answer (default 2; `0` removes the button). Every regeneration counts against the daily budget and the rate limits. The old answer stays but loses its buttons, and the button disappears from the last answer once the limit is reached |
+| **Regenerate** | Writes a new answer to the same question. Only the person who asked, or a Mnemo admin (`MNEMO_ADMIN_USER_IDS`), can use it, at most `MNEMO_MAX_REGENERATIONS` times per answer (default 2; `0` removes the button). Every regeneration counts against the daily budget and the rate limits. The old answer stays but loses its buttons, and the button disappears from the last answer once the limit is reached |
 | `/details` (admins only) | Shows you privately which tools were used with which input, which model answered, the tokens used and what was sent to the provider, for the last public answer in the channel. Answers to `/ask private:true` are never shown |
 | **Follow up** (under `/ask` answers) | Opens a small form for a follow-up question, which is answered with the earlier question and answer as context |
 

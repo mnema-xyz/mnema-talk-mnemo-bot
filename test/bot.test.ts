@@ -206,6 +206,26 @@ describe('regeneration limit', () => {
     assert.match(other.sent[0]?.content ?? '', /Only the person who asked/)
   })
 
+  it('lets an admin regenerate anyone\'s answer, within the same limit, and the asker keeps the button', async () => {
+    const t = setup({ maxRegenerations: 1 })
+    const first = await ask(t)
+    const byAdmin = fake({ customId: first.regen ?? '' }, 'admin')
+    await t.run(byAdmin.i)
+    assert.ok(byAdmin.sent.some((m) => m.content?.startsWith('You asked')))
+    assert.deepEqual(buttonsOf(byAdmin.sent.at(-1)), ['Follow up'])
+  })
+
+  it('keeps the original asker after an admin regenerates', async () => {
+    const t = setup()
+    const first = await ask(t)
+    const byAdmin = fake({ customId: first.regen ?? '' }, 'admin')
+    await t.run(byAdmin.i)
+    const next = byAdmin.sent.at(-1)?.components?.[0]?.components.find((c) => c.label === 'Regenerate')
+    const asker = fake({ customId: next?.custom_id ?? next?.customId ?? '' }, 'u1')
+    await t.run(asker.i)
+    assert.ok(asker.sent.some((m) => m.content?.startsWith('You asked')))
+  })
+
   it('refuses a forged Regenerate id once the limit is reached, and when it is 0', async () => {
     for (const max of [0, 1]) {
       const t = setup({ maxRegenerations: max })

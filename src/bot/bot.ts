@@ -283,8 +283,8 @@ export class MnemoBot {
   }
 
   private async onRegenerate(i: Interaction, answerId: string, rec: AnswerRecord): Promise<void> {
-    if (i.user.id !== rec.askerId) {
-      await i.reply({ content: 'Only the person who asked can regenerate this answer.', ephemeral: true, allowed_mentions: NO_PINGS })
+    if (i.user.id !== rec.askerId && !this.s.adminUserIds.includes(i.user.id)) {
+      await i.reply({ content: 'Only the person who asked, or a Mnemo admin, can regenerate this answer.', ephemeral: true, allowed_mentions: NO_PINGS })
       return
     }
     // The button is hidden at the limit, but a custom id can be forged.
@@ -320,7 +320,7 @@ export class MnemoBot {
       })
       return
     }
-    await this.answerInteraction(i, { question: rec.question, history: rec.history, ephemeral: rec.ephemeral, first: 'followup', regenerations: rec.regenerations + 1 })
+    await this.answerInteraction(i, { question: rec.question, history: rec.history, ephemeral: rec.ephemeral, first: 'followup', regenerations: rec.regenerations + 1, askerId: rec.askerId })
   }
 
   /** Checks the limits for an interaction; a refusal goes only to the member. */
@@ -335,7 +335,7 @@ export class MnemoBot {
    * follow-up), the rest as follow-ups, the buttons under the last part. */
   private async answerInteraction(
     i: Interaction,
-    q: { question: string; history: HistoryTurn[]; ephemeral: boolean; first: 'edit' | 'followup'; regenerations: number },
+    q: { question: string; history: HistoryTurn[]; ephemeral: boolean; first: 'edit' | 'followup'; regenerations: number; askerId?: string },
   ): Promise<void> {
     const result = await this.engine.ask({
       question: q.question,
@@ -345,7 +345,7 @@ export class MnemoBot {
       askerName: i.user.display_name || i.user.username,
       admitted: true,
     })
-    const answerId = this.remember(result, { question: q.question, history: q.history, askerId: i.user.id, channelId: i.channelId, ephemeral: q.ephemeral, regenerations: q.regenerations })
+    const answerId = this.remember(result, { question: q.question, history: q.history, askerId: q.askerId ?? i.user.id, channelId: i.channelId, ephemeral: q.ephemeral, regenerations: q.regenerations })
     const parts = splitMessage(result.text)
     for (const [n, content] of parts.entries()) {
       const last = n === parts.length - 1
