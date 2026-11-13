@@ -1,10 +1,9 @@
 # Changelog
 
-All notable changes to Mnemo. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
-[Semantic Versioning](https://semver.org).
-
-## [Unreleased]
+All notable changes to Mnemo. Versions follow
+[Semantic Versioning](https://semver.org); from 0.1.2 on, this file is
+written by release-please from the commit titles. Container images:
+`ghcr.io/mnema-xyz/mnemo`.
 
 ## [0.1.1] - 2026-11-13
 
@@ -62,6 +61,5 @@ that release.
 - No answer notifies anyone (`allowed_mentions` with an empty `parse` list).
 - An integration test against a real Mnema Talk, and a release check for tags.
 
-[Unreleased]: https://github.com/mnema-xyz/mnema-talk-mnemo-bot/compare/v0.1.1...HEAD
-[0.1.1]: https://github.com/mnema-xyz/mnema-talk-mnemo-bot/compare/v0.1.0...v0.1.1
+[0.1.1]: https://github.com/mnema-xyz/mnema-talk-mnemo-bot/releases/tag/v0.1.1
 [0.1.0]: https://github.com/mnema-xyz/mnema-talk-mnemo-bot/releases/tag/v0.1.0

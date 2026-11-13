@@ -1,7 +1,11 @@
 # Mnemo next to a Mnema Talk server on the same host.
 #
 #   cp .env.example .env     # fill in MNEMA_URL, MNEMA_TOKEN and your AI provider
-#   docker compose up -d --build
+#   docker compose up -d     # pulls ghcr.io/mnema-xyz/mnemo
+#
+# To pin a version, set MNEMO_VERSION=0.1.2 in .env (default: latest). To
+# build from this checkout instead of pulling:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 #
 # MNEMA_URL is your server's public address (https://talk.example.org), the
 # one members open. Mnemo only needs outbound access: to Mnema Talk, to your
@@ -13,8 +17,7 @@
 # the server announces still comes from its PUBLIC_URL.
 services:
   mnemo:
-    image: mnemo:local
-    build: .
+    image: ghcr.io/mnema-xyz/mnemo:${MNEMO_VERSION:-latest}
     restart: unless-stopped
     env_file: .env
     environment:
