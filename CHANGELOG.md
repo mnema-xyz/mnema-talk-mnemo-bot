@@ -5,6 +5,18 @@ All notable changes to Mnemo. Versions follow
 written by release-please from the commit titles. Container images:
 `ghcr.io/mnema-xyz/mnemo`.
 
+## [0.1.2](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/compare/v0.1.1...v0.1.2) (2026-11-13)
+
+
+### Features
+
+* publish the Mnemo image to GHCR, with release automation and a Dockerfile check ([#7](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/issues/7)) ([8546187](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/commit/8546187fae63e78ccfa57d8e9aef51b6972f60a8))
+
+
+### Documentation
+
+* explain prompt caching, its settings and how to check it ([#6](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/issues/6)) ([b494002](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/commit/b49400236fd3fa756a4d503133d001a401d27f27))
+
 ## [0.1.1] - 2026-11-13
 
 ### Changed
