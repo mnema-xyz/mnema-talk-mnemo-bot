@@ -1,12 +1,13 @@
 // Picks the provider from the configuration. A new provider is one file
 // next to this one plus one case here.
+import type { Logger } from '../log.ts'
 import type { Config } from '../config.ts'
 import { anthropicProvider } from './anthropic.ts'
 import { fakeProvider } from './fake.ts'
 import { openaiProvider } from './openai.ts'
 import type { Provider } from './types.ts'
 
-export function createProvider(c: Config): Provider {
+export function createProvider(c: Config, log?: Logger): Provider {
   switch (c.provider) {
     case 'anthropic':
       return anthropicProvider({
@@ -15,6 +16,7 @@ export function createProvider(c: Config): Provider {
         baseUrl: c.baseUrl,
         effort: c.anthropicEffort,
         timeoutMs: c.providerTimeoutMs,
+        log,
       })
     case 'openai':
     case 'openai-compatible':

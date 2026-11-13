@@ -28,7 +28,7 @@ try {
 }
 
 const log = createLogger(config.logLevel)
-const provider = createProvider(config)
+const provider = createProvider(config, log)
 const tools = selectTools({
   enabled: config.tools,
   webSearch: config.searchProvider && config.searchApiKey ? { backend: config.searchProvider, apiKey: config.searchApiKey } : undefined,

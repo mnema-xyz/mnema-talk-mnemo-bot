@@ -363,6 +363,43 @@ under a tenth of a cent per question, roughly a thousand questions or more
 per US dollar. Larger models cost many times more. Check your provider's
 current prices.
 
+### Prompt caching (Anthropic)
+
+With the `anthropic` provider Mnemo uses prompt caching (5-minute lifetime),
+which makes the repeated part of each call about ten times cheaper: the
+tool descriptions and the system prompt are sent again on every call and on
+every round of tool use. Cache reads cost 0.1 times the input price and
+cache writes 1.25 times, so it pays off from the second call within five
+minutes; on a quiet bot the first call of a burst writes the cache and the
+rest read it.
+
+To make that work the system prompt never changes: the time and the
+asker's name (when `MNEMO_SEND_DISPLAY_NAME` allows it) are sent as a short
+note in front of the question instead. Mnemo behaves the same. If you set
+your own persona, keep it free of anything that changes per request: no
+date, no IDs. A system prompt plus tools below the model's minimum for
+caching (512 tokens on the Claude 5.5 models) is simply not cached and
+costs the normal price. The default persona is above it with the built-in
+tools.
+
+How the budget counts it:
+
+- **Cost budget** (`MNEMO_DAILY_COST_BUDGET_USD`): cache reads at 0.1 times
+  and writes at 1.25 times `MNEMO_PRICE_INPUT_PER_MTOK`. Some models read
+  even cheaper; Mnemo then counts a little too much, never too little.
+- **Token budget** (`MNEMO_DAILY_TOKEN_BUDGET`): counts every prompt token,
+  cached ones included. A cached token still went through the model, so the
+  token budget measures volume and the cost budget measures money.
+- The Details note shows the full prompt size; its dollar figure applies the
+  cache prices.
+
+To check that it works, run with `MNEMO_LOG_LEVEL=debug`: every Anthropic
+call logs `anthropic_cache` with `cache_read_input_tokens` and
+`cache_creation_input_tokens`. The first call after a pause shows a write;
+the next ones within five minutes show reads of the same size.
+`cache_read_input_tokens` staying at 0 across calls means something in the
+prompt prefix changes between requests.
+
 Guards keep a busy channel or a curious member from running up a bill:
 
 - **Rate limits**: 5 questions per member and 20 per channel per minute by

@@ -6,6 +6,19 @@ All notable changes to Mnemo. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Anthropic prompt caching: the system prompt (and the tools before it) is
+  cached, and the conversation tail is cached across the rounds of a tool
+  loop. The system prompt is now identical for every request; the current
+  time and the asker's name arrive as a short note before the question.
+  Answers are unchanged. The OpenAI providers send the same text as before.
+- The daily cost budget prices cache reads at 0.1 times and cache writes at
+  1.25 times the input price; the token budget still counts every token.
+  Today's counters in `budget.json` carry over.
+- `MNEMO_LOG_LEVEL=debug` logs `anthropic_cache` with the cache read and
+  write token counts of each call.
+
 ## [0.1.0] - 2026-11-13
 
 First release. Requires Mnema Talk 3.1.0 or newer and takes the SDK from

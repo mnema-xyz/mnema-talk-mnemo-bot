@@ -4,7 +4,7 @@
 // differ only in the base URL and the key.
 import OpenAI from 'openai'
 import { chatViaResponses } from './openai-responses.ts'
-import { errorDetail, ProviderError, type ChatRequest, type ChatResponse, type Provider, type StopReason, type ToolCall, type Turn } from './types.ts'
+import { errorDetail, ProviderError, type ChatRequest, type ChatResponse, type Provider, type StopReason, systemWithContext, type ToolCall, type Turn } from './types.ts'
 
 export interface OpenAIOptions {
   /** `openai` (Responses API) or `openai-compatible` (Chat Completions). */
@@ -47,7 +47,7 @@ export function openaiProvider(opts: OpenAIOptions): Provider {
             // Compatible servers know the old name; OpenAI itself goes through Responses.
             // eslint-disable-next-line @typescript-eslint/no-deprecated -- compatible servers still need it
             max_tokens: req.maxOutputTokens,
-            messages: [{ role: 'system', content: req.system }, ...toMessages(req.turns)],
+            messages: [{ role: 'system', content: systemWithContext(req) }, ...toMessages(req.turns)],
             ...(req.tools.length > 0
               ? {
                   tools: req.tools.map((t) => ({

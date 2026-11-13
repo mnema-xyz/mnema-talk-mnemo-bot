@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
@@ -79,11 +79,38 @@ describe('Budget', () => {
     assert.equal(b.reserve({ inputTokens: 1000, outputTokens: 1000 }), undefined)
   })
 
+  it('prices cache reads at a tenth and cache writes at 1.25 times the input price', () => {
+    const b = new Budget(base) // $1 in, $5 out per MTok
+    // 1,000,000 prompt tokens: 800k read, 100k written, 100k plain; 100k out.
+    const cost = b.costUsd({ inputTokens: 1_000_000, outputTokens: 100_000, cacheReadTokens: 800_000, cacheWriteTokens: 100_000 })
+    assert.equal(cost.toFixed(4), (0.1 + 0.08 + 0.125 + 0.5).toFixed(4))
+    assert.equal(b.costUsd({ inputTokens: 1000, outputTokens: 0 }), 0.001, 'without a split everything is plain input')
+  })
+
+  it('lets a day of cache reads cost a tenth, while the token budget still counts every token', () => {
+    const cost = new Budget({ ...base, dailyCostUsd: 0.01 })
+    cost.add({ inputTokens: 90_000, outputTokens: 0, cacheReadTokens: 90_000 }) // $0.009, not $0.09
+    assert.equal(cost.hasRoom(), true)
+    const tokens = new Budget({ ...base, dailyTokens: 100_000 })
+    tokens.add({ inputTokens: 100_000, outputTokens: 0, cacheReadTokens: 100_000 })
+    assert.equal(tokens.hasRoom(), false)
+    assert.deepEqual({ ...cost.snapshot(), costUsd: 0 }, { day: cost.snapshot().day, inputTokens: 90_000, outputTokens: 0, cacheReadTokens: 90_000, cacheWriteTokens: 0, costUsd: 0 })
+  })
+
+  it('reads a state file written before the cache counters existed', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'mnemo-')), 'budget.json')
+    const now = () => new Date('2026-11-13T10:00:00Z')
+    writeFileSync(file, JSON.stringify({ day: '2026-11-13', inputTokens: 70, outputTokens: 30 }))
+    const b = new Budget({ ...base, stateFile: file }, now)
+    assert.equal(b.snapshot().inputTokens, 70)
+    assert.equal(b.snapshot().cacheReadTokens, 0)
+  })
+
   it('survives a restart through the state file, for the same day only', () => {
     const file = join(mkdtempSync(join(tmpdir(), 'mnemo-')), 'budget.json')
     const now = () => new Date('2026-11-13T10:00:00Z')
     new Budget({ ...base, dailyTokens: 100, stateFile: file }, now).add({ inputTokens: 70, outputTokens: 30 })
-    assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { day: '2026-11-13', inputTokens: 70, outputTokens: 30 })
+    assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { day: '2026-11-13', inputTokens: 70, outputTokens: 30, cacheReadTokens: 0, cacheWriteTokens: 0 })
     assert.equal(new Budget({ ...base, dailyTokens: 100, stateFile: file }, now).hasRoom(), false)
     assert.equal(new Budget({ ...base, dailyTokens: 100, stateFile: file }, () => new Date('2026-11-14T10:00:00Z')).hasRoom(), true)
   })
