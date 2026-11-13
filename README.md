@@ -41,6 +41,11 @@ the AI) and, for `/ask`, **Follow up**.
 
 ## Quick start (5 minutes)
 
+**Requires Mnema Talk MNEMA_MIN_VERSION or newer**: the first release that contains the bot platform (3.1 or later).
+<!-- MNEMA_MIN_VERSION: filled in at release. Until that release exists, Mnemo needs a server built from the bot platform branch (msch128/feat-bot-platform). -->
+Older servers have no manifests, buttons or bot SDK, and Mnemo cannot be
+added to them.
+
 You need a Mnema Talk server on which you are the Owner (or hold *Manage
 bots*), an API key from an AI provider (or a local model, see
 [AI providers](#ai-providers)), and Docker or Node.js 24.
