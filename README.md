@@ -675,5 +675,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the rules, and
 
 ## License
 
-[GNU Affero General Public License v3.0](LICENSE), like Mnema Talk. If you
-run a modified Mnemo for others, they are entitled to its source.
+[MIT License](LICENSE). Mnema Talk itself is AGPL-3.0-only; Mnemo is a separate
+program that talks to it over its bot API, so it is not bound by that license.
+Releases up to and including 0.1.3 were published under AGPL-3.0-only.
