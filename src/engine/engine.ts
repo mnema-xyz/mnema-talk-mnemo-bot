@@ -115,7 +115,7 @@ export class Engine {
     const s = this.d.settings
     const name = s.sendDisplayName ? cleanName(input.askerName) : undefined
     const system = buildSystemPrompt(s.persona, this.now(), name)
-    const specs = toolSpecs(this.d.tools)
+    const specs = s.maxToolCalls > 0 ? toolSpecs(this.d.tools) : []
     const turns: Turn[] = [
       ...input.history.map((h): Turn => (h.role === 'user' ? { role: 'user', text: h.text } : { role: 'assistant', text: h.text, toolCalls: [] })),
       { role: 'user', text: question },
@@ -211,7 +211,9 @@ export class Engine {
     }
     const result = await runTool(this.d.tools, call, ctx)
     entry.ok = !result.isError
-    if (result.isError) this.d.log.debug('tool_error', { tool: call.name, message: result.content })
+    // The error text can quote the question ("no place called ..."): the log
+    // gets only the tool's name.
+    if (result.isError) this.d.log.debug('tool_error', { tool: call.name })
     return result
   }
 }

@@ -19,10 +19,18 @@ export function redact(fields: Record<string, unknown>): Record<string, unknown>
   for (const [k, v] of Object.entries(fields)) {
     if (v === undefined) continue
     if (SECRET.test(k) && !/tokens$/i.test(k)) out[k] = '[redacted]'
-    else if (v instanceof Error) out[k] = { name: v.name, message: v.message }
+    else if (v instanceof Error) out[k] = errorFields(v)
     else out[k] = v
   }
   return out
+}
+
+/** An error as log fields: name, message, and the code of its cause (a
+ * network error's ECONNREFUSED, ENOTFOUND, CERT_HAS_EXPIRED ...). */
+function errorFields(e: Error): Record<string, unknown> {
+  const cause = e.cause as { code?: unknown } | undefined
+  const code = typeof cause?.code === 'string' ? cause.code : undefined
+  return { name: e.name, message: e.message, ...(code ? { cause: code } : {}) }
 }
 
 export function createLogger(level: Level, write: (line: string) => void = (l) => process.stdout.write(l + '\n')): Logger {

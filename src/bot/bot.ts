@@ -349,7 +349,8 @@ export class MnemoBot {
     try {
       await next
     } catch (err) {
-      if (err instanceof RestError) this.log.warn('mnema_api_error', { status: err.status, code: err.code, message: err.message })
+      // Status, code and route only: a server message can quote the message.
+      if (err instanceof RestError) this.log.warn('mnema_api_error', { status: err.status, code: err.code, method: err.method, path: err.path })
       else throw err
     } finally {
       if (this.queues.get(key) === tail) this.queues.delete(key)

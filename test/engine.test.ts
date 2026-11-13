@@ -96,6 +96,31 @@ describe('Engine', () => {
     assert.match(tool?.role === 'tool' ? (tool.results[1]?.content ?? '') : '', /tool call limit/)
   })
 
+  it('offers no tools when tool calls are off', async () => {
+    const p = fakeProvider()
+    await engine(p, { maxToolCalls: 0 }).ask({ ...ask, question: 'q' })
+    assert.deepEqual(p.requests[0]?.tools, [])
+  })
+
+  it('keeps question text out of the logs, also at debug level', async () => {
+    const lines: unknown[] = []
+    const capture = (msg: string, f?: Record<string, unknown>) => lines.push({ msg, ...f })
+    const p = fakeProvider([{ toolCalls: [{ id: 't', name: 'convert_units', input: { value: 1, from: 'secret-unit-xyz', to: 'm' } }] }, { text: 'ok' }])
+    const e = new Engine({
+      provider: p,
+      tools: BUILTIN_TOOLS,
+      settings,
+      memberLimit: new RateLimiter(3, 60_000),
+      channelLimit: new RateLimiter(5, 60_000),
+      budget: new Budget({ dailyTokens: 0, dailyCostUsd: 0, inputUsdPerMTok: 0, outputUsdPerMTok: 0 }),
+      log: { debug: capture, info: capture, warn: capture, error: capture },
+    })
+    await e.ask({ ...ask, question: 'private words' })
+    const all = JSON.stringify(lines)
+    assert.doesNotMatch(all, /secret-unit-xyz|private words/)
+    assert.match(all, /"tool_error".*"tool":"convert_units"/)
+  })
+
   it('gives up after a bounded number of rounds', async () => {
     const p = fakeProvider([{ text: 'thinking', toolCalls: [{ id: 'x', name: 'calculator', input: { expression: '1' } }] }])
     const r = await engine(p, { maxToolCalls: 100 }).ask({ ...ask, question: 'loop forever' })
