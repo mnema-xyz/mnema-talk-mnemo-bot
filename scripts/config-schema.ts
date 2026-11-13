@@ -8,7 +8,7 @@ const schema = z.toJSONSchema(SettingsSchema.partial(), { io: 'input', target: '
 const properties = { $schema: { type: 'string' }, ...(schema.properties as Record<string, unknown>) }
 const out = {
   ...schema,
-  $id: 'https://github.com/mnema-xyz/mnema-talk-mnemo-bot/mnemo.config.schema.json',
+  $id: 'https://github.com/mnema-xyz/talk-mnemo-bot/mnemo.config.schema.json',
   title: 'Mnemo configuration file',
   description: 'Settings for Mnemo (MNEMO_CONFIG). Environment variables override it. Secrets never go here.',
   properties,

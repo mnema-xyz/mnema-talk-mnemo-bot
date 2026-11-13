@@ -237,7 +237,7 @@
       ]
     }
   },
-  "$id": "https://github.com/mnema-xyz/mnema-talk-mnemo-bot/mnemo.config.schema.json",
+  "$id": "https://github.com/mnema-xyz/talk-mnemo-bot/mnemo.config.schema.json",
   "title": "Mnemo configuration file",
   "description": "Settings for Mnemo (MNEMO_CONFIG). Environment variables override it. Secrets never go here.",
   "additionalProperties": false

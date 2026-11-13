@@ -13,7 +13,7 @@ const manifest = {
   name: 'Mnemo',
   description:
     'A self-hosted AI helper: answers questions with live weather, a calculator, time zones, unit conversion and Wikipedia. You run it with your own AI provider and key.',
-  homepage: 'https://github.com/mnema-xyz/mnema-talk-mnemo-bot',
+  homepage: 'https://github.com/mnema-xyz/talk-mnemo-bot',
   avatar: `data:image/png;base64,${png.toString('base64')}`,
   intents: ['GUILD_MESSAGES'],
   permissions: ['view_channel', 'send_messages', 'add_reactions'],

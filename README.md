@@ -57,7 +57,7 @@ send messages and add reactions, and to receive messages through the
 `GUILD_MESSAGES` intent). Build the add link for your server:
 
 ```sh
-git clone https://github.com/mnema-xyz/mnema-talk-mnemo-bot.git
+git clone https://github.com/mnema-xyz/talk-mnemo-bot.git
 cd mnema-talk-mnemo-bot
 npm ci
 npm run add-link -- https://talk.example.org
@@ -493,8 +493,12 @@ something goes wrong.
   ```sh
   cosign verify ghcr.io/mnema-xyz/mnemo:0.1 \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-    --certificate-identity-regexp '^https://github\.com/mnema-xyz/mnema-talk-mnemo-bot/\.github/workflows/release\.yml@refs/(heads/main|tags/v.+)$'
+    --certificate-identity-regexp '^https://github\.com/mnema-xyz/(talk-mnemo-bot|mnema-talk-mnemo-bot)/\.github/workflows/release\.yml@refs/(heads/main|tags/v.+)$'
   ```
+
+  The repository was called `mnema-talk-mnemo-bot` until 0.1.6; images up to
+  that version are signed under that name, later ones as `talk-mnemo-bot`.
+  The pattern accepts both.
 
   The signature belongs to the image digest, not to the tag: `cosign verify`
   resolves the tag, and the output shows the digest it checked. For an
