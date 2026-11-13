@@ -1,0 +1,15 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="none" role="img" aria-label="Mnemo">
+  <!-- Mnemo: a speech bubble holding Mnema's node mark, three nodes joined at a centre
+       that is lit. Mnema Talk's palette: canvas #0F1110, green #2DA771, mint #8CCBAA. -->
+  <rect width="256" height="256" rx="56" fill="#0F1110"/>
+  <path d="M70 52 H186 A30 30 0 0 1 216 82 V150 A30 30 0 0 1 186 180 H118 L84 208 V180 H70 A30 30 0 0 1 40 150 V82 A30 30 0 0 1 70 52 Z"
+        stroke="#2DA771" stroke-width="9" stroke-linejoin="round"/>
+  <line x1="128" y1="118" x2="92" y2="90" stroke="#2DA771" stroke-width="7" stroke-linecap="round"/>
+  <line x1="128" y1="118" x2="164" y2="90" stroke="#2DA771" stroke-width="7" stroke-linecap="round"/>
+  <line x1="128" y1="118" x2="128" y2="152" stroke="#2DA771" stroke-width="7" stroke-linecap="round"/>
+  <path d="M154 116 A26 26 0 0 1 141 140" stroke="#8CCBAA" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="92" cy="90" r="11" fill="#0F1110" stroke="#2DA771" stroke-width="7"/>
+  <circle cx="164" cy="90" r="11" fill="#0F1110" stroke="#2DA771" stroke-width="7"/>
+  <circle cx="128" cy="152" r="11" fill="#0F1110" stroke="#2DA771" stroke-width="7"/>
+  <circle cx="128" cy="118" r="14" fill="#2DA771"/>
+</svg>
