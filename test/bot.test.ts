@@ -37,7 +37,7 @@ function setup(over: Partial<BotSettings> = {}, budget = new Budget({ dailyToken
       },
     },
     setPresence: () => undefined,
-    rest: { createMessage: (_c: string, body: Sent) => Promise.resolve(void posted.push(body)) },
+    rest: { addReaction: () => Promise.resolve(), removeReaction: () => Promise.resolve(), createMessage: (_c: string, body: Sent) => Promise.resolve(void posted.push(body)) },
   }) as unknown as Client
   const engine = new Engine({
     provider: fakeProvider(),
@@ -139,8 +139,9 @@ describe('/details', () => {
     const d = fake({ command: 'details' }, 'u1')
     await t.run(d.i)
     assert.equal(d.sent[0]?.ephemeral, true)
+    assert.equal(d.sent.length, 1)
     assert.equal(d.sent[0]?.content, 'Only Mnemo admins can see how an answer was made.')
-    assert.doesNotMatch(d.sent[0]?.content ?? '', /model|token|fake/i)
+    assert.equal(d.sent[0]?.components, undefined)
   })
 
   it('refuses everyone when no admin is configured', async () => {
@@ -161,7 +162,7 @@ describe('/details', () => {
 })
 
 describe('regeneration limit', () => {
-  it('lets the asker regenerate twice, then the button is gone and a stale click is refused', async () => {
+  it('lets the asker regenerate twice, then the button is gone', async () => {
     const t = setup()
     const first = await ask(t)
     assert.ok(first.regen)
@@ -203,5 +204,70 @@ describe('regeneration limit', () => {
     const other = fake({ customId: first.regen ?? '' }, 'u2')
     await t.run(other.i)
     assert.match(other.sent[0]?.content ?? '', /Only the person who asked/)
+  })
+
+  it('regenerates once on a double click', async () => {
+    const t = setup()
+    const first = await ask(t)
+    const a = fake({ customId: first.regen ?? '' }, 'u1')
+    const b = fake({ customId: first.regen ?? '' }, 'u1')
+    await Promise.all([t.run(a.i), t.run(b.i)])
+    const answered = [a, b].filter((x) => x.sent.some((m) => m.content?.startsWith('You asked')))
+    assert.equal(answered.length, 1)
+    assert.match([a, b].find((x) => !answered.includes(x))?.sent[0]?.content ?? '', /too old/)
+  })
+
+  it('refuses a regeneration once the daily budget is used up, with no buttons', async () => {
+    const budget = new Budget({ dailyTokens: 10_000, dailyCostUsd: 0, inputUsdPerMTok: 0, outputUsdPerMTok: 0 })
+    const t = setup({}, budget)
+    const first = await ask(t)
+    assert.ok(first.regen)
+    // Use the day's tokens up, then try again.
+    budget.add({ inputTokens: 20_000, outputTokens: 0 })
+    const again = fake({ customId: first.regen ?? '' }, 'u1')
+    await t.run(again.i)
+    assert.match(again.sent.at(-1)?.content ?? '', /budget/)
+    assert.equal(again.sent.at(-1)?.components, undefined)
+  })
+})
+
+describe('/details scope', () => {
+  it('is per channel, and a private answer does not replace the public one', async () => {
+    const t = setup()
+    await ask(t, { channel: 'c1' })
+    const other = fake({ command: 'details' }, 'admin', 'c2')
+    await t.run(other.i)
+    assert.match(other.sent[0]?.content ?? '', /no recent public answer/)
+
+    await ask(t, { channel: 'c1', private: true })
+    const d = fake({ command: 'details' }, 'admin', 'c1')
+    await t.run(d.i)
+    assert.match(d.sent[0]?.content ?? '', /How this answer was made/)
+  })
+})
+
+describe('mentions and threads', () => {
+  it('count regenerations in the thread path, and /details follows the new answer', async () => {
+    const t = setup({ replyInThread: true })
+    t.events.emit('ready', { user: { id: 'bot', username: 'mnemo' }, session_id: 's' })
+    t.events.emit('messageCreate', {
+      id: 'm1', channel_id: 'c1', user_id: 'u1', username: 'u1', display_name: 'u1', is_bot: false, mentions: ['bot'], content: '<@bot> hello',
+    })
+    await new Promise((r) => setTimeout(r, 50))
+    const buttonId = (m: Sent | undefined) => m?.components?.[0]?.components.find((c) => c.label === 'Regenerate')?.custom_id ?? ''
+    const first = t.posted.at(-1)
+    assert.deepEqual(buttonsOf(first), ['Regenerate'])
+
+    await t.run(fake({ customId: buttonId(first) }, 'u1').i)
+    const second = t.posted.at(-1)
+    assert.notEqual(second, first)
+    assert.deepEqual(buttonsOf(second), ['Regenerate'])
+    await t.run(fake({ customId: buttonId(second) }, 'u1').i)
+    assert.equal(buttonsOf(t.posted.at(-1)).length, 0)
+    assert.equal(t.posted.at(-1)?.components, undefined)
+
+    const d = fake({ command: 'details' }, 'admin', 'c1')
+    await t.run(d.i)
+    assert.match(d.sent[0]?.content ?? '', /How this answer was made/)
   })
 })

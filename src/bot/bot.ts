@@ -244,6 +244,7 @@ export class MnemoBot {
   /** /details: admins only. Everyone else gets a private refusal, and no
    * detail reaches the channel or anyone else. */
   private async onDetails(i: Interaction): Promise<void> {
+    // Admins only; the answer lookup is per channel.
     if (!this.s.adminUserIds.includes(i.user.id)) {
       this.log.info('details_refused', { user: i.user.id, channel: i.channelId })
       await i.reply({ content: 'Only Mnemo admins can see how an answer was made.', ephemeral: true, allowed_mentions: NO_PINGS })
@@ -286,15 +287,17 @@ export class MnemoBot {
       await i.reply({ content: 'Only the person who asked can regenerate this answer.', ephemeral: true, allowed_mentions: NO_PINGS })
       return
     }
-    if (rec.regenerations >= this.s.maxRegenerations) {
-      await i.reply({ content: 'This answer was regenerated as often as allowed. Ask a new question or a follow-up.', ephemeral: true, allowed_mentions: NO_PINGS })
+    if (await this.refusedPrivately(i)) return
+    // Claimed with no await between check and delete, so a double click
+    // regenerates once.
+    if (!this.answers.has(answerId)) {
+      await i.reply({ content: 'This answer is too old for that now. Ask me again.', ephemeral: true, allowed_mentions: NO_PINGS })
       return
     }
-    if (await this.refusedPrivately(i)) return
+    this.answers.delete(answerId)
     await i.deferUpdate()
     // The old answer stays readable; its buttons go, the new answer gets them.
     await i.editReply({ components: [] }).catch(() => undefined)
-    this.answers.delete(answerId)
     if (rec.threadId) {
       const threadId = rec.threadId
       await this.serial(threadId, async () => {
@@ -373,7 +376,7 @@ export class MnemoBot {
     this.log.info('answer_details', {
       answer: id,
       channel: r.channelId,
-      asker: r.askerId,
+      ...(r.ephemeral ? {} : { asker: r.askerId }),
       provider: details.provider,
       model: details.model,
       tools: details.toolsUsed.map((t) => `${t.name}${t.ok ? '' : ':failed'}`),
