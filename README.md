@@ -342,6 +342,9 @@ contacts outside services.
 - the system prompt, the current date and time (UTC), the tool descriptions
   and the tools' results.
 
+When an admin regenerates an answer in a thread, the model sees the admin's
+display name instead of the asker's (only with `MNEMO_SEND_DISPLAY_NAME` on).
+
 Mnemo never sends the provider a channel's history, other members' messages
 outside its threads, user IDs, usernames, avatars, the server's address or
 your Mnema Talk token. `/details` shows admins what was sent.
