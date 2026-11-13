@@ -621,7 +621,7 @@ Four runtime dependencies, each for a reason:
 
 | Package | Why |
 |---|---|
-| [`mnema-talk-sdk`](https://github.com/msch128/mnema-talk/tree/main/sdk/typescript) | The official SDK: REST, gateway with heartbeats, resume and backoff, interactions, components. It has no dependencies of its own |
+| [`@mnema-xyz/bot-sdk`](https://www.npmjs.com/package/@mnema-xyz/bot-sdk) | The official SDK: REST, gateway with heartbeats, resume and backoff, interactions, components. It has no dependencies of its own |
 | [`@anthropic-ai/sdk`](https://github.com/anthropics/anthropic-sdk-typescript) | Anthropic's official client: request types, retries, typed errors |
 | [`openai`](https://github.com/openai/openai-node) | OpenAI's official client, which also serves every OpenAI-compatible server |
 | [`zod`](https://zod.dev) | Validates the configuration and each tool's input, and produces the JSON Schemas the model sees from the same definitions |
@@ -633,19 +633,18 @@ typescript-eslint, and Node's built-in test runner.
 
 ### The SDK dependency
 
-The SDK is not on the npm registry; it is published as a tarball with each
-Mnema Talk release, and `package.json` takes it from there:
+The SDK comes from the npm registry, pinned to an exact version like every
+dependency here:
 
 ```json
-"mnema-talk-sdk": "https://github.com/msch128/mnema-talk/releases/download/v3.1.0/mnema-talk-sdk-3.1.0.tgz"
+"@mnema-xyz/bot-sdk": "3.1.2"
 ```
 
-`package-lock.json` pins its SHA-512 integrity, so `npm ci` refuses a
-tarball that differs from the one checked against the release's `.sha256`
-file. npm 12 fetches tarball URLs only when allowed: the repository's
-[`.npmrc`](.npmrc) sets `allow-remote=root`, which allows it for direct
-dependencies only. To move to a newer Mnema Talk release, change the two
-version numbers in the URL and run `npm install`.
+Each SDK version is published from
+[mnema-xyz/bot-sdk-js](https://github.com/mnema-xyz/bot-sdk-js) by its CI with
+npm provenance, and `package-lock.json` pins its SHA-512 integrity, so
+`npm ci` refuses anything else. `npm audit signatures` checks the registry
+signatures and the provenance attestation.
 
 ## Development
 

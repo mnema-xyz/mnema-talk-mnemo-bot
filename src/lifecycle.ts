@@ -1,6 +1,6 @@
 // What to do when the connection to Mnema Talk fails or closes. Kept apart
 // from main.ts so that it can be tested.
-import { GatewayError, RestError, type GatewayCloseInfo } from 'mnema-talk-sdk'
+import { GatewayError, RestError, type GatewayCloseInfo } from '@mnema-xyz/bot-sdk'
 
 export type Verdict = { action: 'exit'; hint: string } | { action: 'retry' }
 

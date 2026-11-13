@@ -19,7 +19,7 @@ describe('release check', () => {
   }
 
   it('refuses a tag while a version placeholder or a vendored SDK is in place', () => {
-    const r = runIn('Requires Mnema Talk MNEMA_MIN_VERSION or newer', '{"dependencies": {"mnema-talk-sdk": "file:vendor/sdk.tgz"}}')
+    const r = runIn('Requires Mnema Talk MNEMA_MIN_VERSION or newer', '{"dependencies": {"@mnema-xyz/bot-sdk": "file:vendor/sdk.tgz"}}')
     assert.equal(r.status, 1)
     assert.match(r.stderr, /MNEMA_MIN_VERSION/)
     assert.match(r.stderr, /vendor/)

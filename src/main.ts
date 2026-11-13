@@ -2,7 +2,7 @@
 // Mnema Talk, serve the health endpoint, and shut down cleanly on SIGTERM.
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
-import { Client, Intents } from 'mnema-talk-sdk'
+import { Client, Intents } from '@mnema-xyz/bot-sdk'
 import pkg from '../package.json' with { type: 'json' }
 import { MnemoBot } from './bot/bot.ts'
 import { ConfigError, loadConfig } from './config.ts'

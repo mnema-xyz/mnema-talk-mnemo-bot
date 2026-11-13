@@ -1,6 +1,6 @@
 // Mnemo's slash command, shared by the bot (registered at start) and the
 // manifest (registered when an Owner adds Mnemo).
-import { OptionType, type CommandInput } from 'mnema-talk-sdk'
+import { OptionType, type CommandInput } from '@mnema-xyz/bot-sdk'
 
 export const ASK_COMMAND: CommandInput = {
   name: 'ask',
