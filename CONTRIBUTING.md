@@ -61,8 +61,8 @@ By contributing you agree that your contribution is licensed under the
 
 Releases are automatic. After each merge to `main`, release-please opens or
 updates a release pull request that bumps the version and writes
-[CHANGELOG.md](CHANGELOG.md) from the conventional commits (`feat:` and `fix:`
-make a release; before 1.0 both bump the patch number, and a `!` or a
+[CHANGELOG.md](CHANGELOG.md) from the conventional commits (`feat:`, `fix:`, `perf:` and
+`revert:` make a release; before 1.0 both bump the patch number, and a `!` or a
 `BREAKING CHANGE:` bumps the minor number). Merging that pull request creates
 the tag `vX.Y.Z` and the GitHub release, and the same workflow then builds the
 image for linux/amd64 and linux/arm64 and pushes it to

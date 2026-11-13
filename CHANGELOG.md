@@ -60,3 +60,6 @@ that release.
 - Mnemo follows only the threads it starts.
 - No answer notifies anyone (`allowed_mentions` with an empty `parse` list).
 - An integration test against a real Mnema Talk, and a release check for tags.
+
+[0.1.1]: https://github.com/mnema-xyz/mnema-talk-mnemo-bot/releases/tag/v0.1.1
+[0.1.0]: https://github.com/mnema-xyz/mnema-talk-mnemo-bot/releases/tag/v0.1.0

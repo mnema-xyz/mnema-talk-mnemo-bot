@@ -64,10 +64,17 @@ jobs:
       IMAGE: ghcr.io/mnema-xyz/mnemo
       TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
     steps:
-      - name: The tag looks like a release
+      - name: The tag is a plain release tag, and says whether it is the newest
         run: |
-          case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "::error::not a release tag: $TAG"; exit 1 ;; esac
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::not a release tag: vX.Y.Z expected"
+            exit 1
+          fi
           echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+          # Only the newest release moves "latest" and "X.Y": rebuilding an
+          # older tag by hand must not roll them back.
+          newest=$(git ls-remote --tags --refs "https://github.com/$GITHUB_REPOSITORY" 'v*' | sed 's#.*refs/tags/##' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          if [ "$newest" = "$TAG" ]; then echo "NEWEST=true" >> "$GITHUB_ENV"; else echo "NEWEST=false" >> "$GITHUB_ENV"; fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -81,7 +88,6 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          cache: npm
       - name: The tagged commit passes the checks
         run: |
           scripts/release-check.sh
@@ -105,8 +111,8 @@ jobs:
           images: ${{ env.IMAGE }}
           tags: |
             type=semver,pattern={{version}},value=${{ env.VERSION }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ env.VERSION }}
-            type=raw,value=latest
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.VERSION }},enable=${{ env.NEWEST }}
+            type=raw,value=latest,enable=${{ env.NEWEST }}
           labels: |
             org.opencontainers.image.title=Mnemo
             org.opencontainers.image.description=Mnemo, a self-hosted AI helper bot for Mnema Talk
