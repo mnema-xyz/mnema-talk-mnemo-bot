@@ -80,7 +80,7 @@ export class MnemoBot {
     client.on('ready', (r) => {
       this.selfId = r.user.id
       this.selfName = r.user.username
-      this.selfHandle = r.user.handle
+      this.selfHandle = r.user.handle ?? ''
       log.info('ready', { bot: r.user.username, handle: r.user.handle, session: r.session_id })
       void this.afterReady()
     })

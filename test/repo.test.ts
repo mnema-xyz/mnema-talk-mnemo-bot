@@ -10,18 +10,23 @@ import { describe, it } from 'node:test'
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
 
 describe('release check', () => {
-  it('refuses a tag while the version placeholder or the vendored SDK is in place, and passes once both are gone', () => {
+  const script = fileURLToPath(new URL('../scripts/release-check.sh', import.meta.url))
+  const runIn = (readme: string, pkg: string) => {
     const dir = mkdtempSync(join(tmpdir(), 'mnemo-release-'))
-    writeFileSync(join(dir, 'README.md'), read('README.md'))
-    writeFileSync(join(dir, 'package.json'), read('package.json'))
-    const run = () => spawnSync('bash', [fileURLToPath(new URL('../scripts/release-check.sh', import.meta.url))], { cwd: dir, encoding: 'utf8' })
-    const now = run()
-    assert.equal(now.status, 1)
-    assert.match(now.stderr, /MNEMA_MIN_VERSION/)
-    assert.match(now.stderr, /vendor/)
-    writeFileSync(join(dir, 'README.md'), read('README.md').replaceAll('MNEMA_MIN_VERSION', '3.1.0'))
-    writeFileSync(join(dir, 'package.json'), read('package.json').replace(/"file:vendor\/[^"]+"/, '"https://github.com/msch128/mnema-talk/releases/download/v3.1.0/mnema-talk-sdk-3.1.0.tgz"'))
-    assert.equal(run().status, 0)
+    writeFileSync(join(dir, 'README.md'), readme)
+    writeFileSync(join(dir, 'package.json'), pkg)
+    return spawnSync('bash', [script], { cwd: dir, encoding: 'utf8' })
+  }
+
+  it('refuses a tag while a version placeholder or a vendored SDK is in place', () => {
+    const r = runIn('Requires Mnema Talk MNEMA_MIN_VERSION or newer', '{"dependencies": {"mnema-talk-sdk": "file:vendor/sdk.tgz"}}')
+    assert.equal(r.status, 1)
+    assert.match(r.stderr, /MNEMA_MIN_VERSION/)
+    assert.match(r.stderr, /vendor/)
+  })
+
+  it('passes for the repository as it is', () => {
+    assert.equal(runIn(read('README.md'), read('package.json')).status, 0)
   })
 })
 

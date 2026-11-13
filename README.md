@@ -41,8 +41,7 @@ the AI) and, for `/ask`, **Follow up**.
 
 ## Quick start (5 minutes)
 
-**Requires Mnema Talk MNEMA_MIN_VERSION or newer**: the first release that contains the bot platform (3.1 or later).
-<!-- MNEMA_MIN_VERSION: filled in at release. Until that release exists, Mnemo needs a server built from the bot platform branch (msch128/feat-bot-platform). -->
+**Requires Mnema Talk 3.1.0 or newer**: the first release that contains the bot platform (3.1 or later).
 Older servers have no manifests, buttons or bot SDK, and Mnemo cannot be
 added to them.
 
@@ -556,17 +555,19 @@ typescript-eslint, and Node's built-in test runner.
 
 ### The SDK dependency
 
-The SDK is published as a tarball with each Mnema Talk release. Until the
-first release that contains it, this repository carries a copy built from
-the bot platform branch in [`vendor/`](vendor/). Switching to the release is
-one line in `package.json`:
+The SDK is not on the npm registry; it is published as a tarball with each
+Mnema Talk release, and `package.json` takes it from there:
 
-```diff
--    "mnema-talk-sdk": "file:vendor/mnema-talk-sdk-9d5c8a665.tgz",
-+    "mnema-talk-sdk": "https://github.com/msch128/mnema-talk/releases/download/vX.Y.Z/mnema-talk-sdk-X.Y.Z.tgz",
+```json
+"mnema-talk-sdk": "https://github.com/msch128/mnema-talk/releases/download/v3.1.0/mnema-talk-sdk-3.1.0.tgz"
 ```
 
-followed by `npm install`.
+`package-lock.json` pins its SHA-512 integrity, so `npm ci` refuses a
+tarball that differs from the one checked against the release's `.sha256`
+file. npm 12 fetches tarball URLs only when allowed: the repository's
+[`.npmrc`](.npmrc) sets `allow-remote=root`, which allows it for direct
+dependencies only. To move to a newer Mnema Talk release, change the two
+version numbers in the URL and run `npm install`.
 
 ## Development
 

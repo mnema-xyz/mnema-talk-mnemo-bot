@@ -7,8 +7,7 @@
 # node:24-alpine, pinned by digest; Dependabot proposes updates.
 FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-COPY vendor/ ./vendor/
+COPY package.json package-lock.json .npmrc ./
 # Production dependencies only; no install scripts run.
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
 

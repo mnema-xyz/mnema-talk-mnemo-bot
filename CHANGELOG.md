@@ -6,6 +6,11 @@ All notable changes to Mnemo. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-13
+
+First release. Requires Mnema Talk 3.1.0 or newer and takes the SDK from
+that release.
+
 ### Added
 
 - Mnemo answers mentions in a thread under the question, keeps the
@@ -25,3 +30,16 @@ All notable changes to Mnemo. The format follows
   schema, checked at start; secrets only from the environment or `*_FILE`.
 - Manifest with avatar, add link script, Dockerfile (non-root, pinned base
   image), Compose example, health endpoint, JSON logs, graceful shutdown.
+- The `openai` provider uses OpenAI's Responses API (nothing stored between
+  calls); OpenAI-compatible servers use Chat Completions.
+- A hard daily budget: every model call reserves its worst case and settles
+  it with the reported usage; failed calls count at their worst case.
+- Rate-limit refusals once per member and window for mentions, and privately
+  for `/ask` and the buttons.
+- A fatal gateway close ends Mnemo with exit code 1, so Docker restarts it.
+- Mnemo follows only the threads it starts.
+- No answer notifies anyone (`allowed_mentions` with an empty `parse` list).
+- An integration test against a real Mnema Talk, and a release check for tags.
+
+[Unreleased]: https://github.com/msch128/mnema-talk-mnemo-bot/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/msch128/mnema-talk-mnemo-bot/releases/tag/v0.1.0
