@@ -66,14 +66,27 @@ export interface Provider {
   chat(request: ChatRequest): Promise<ChatResponse>
 }
 
-/** A provider error that is safe to show (no key, no request body). */
+/** A provider error. `message` is safe to show in the chat; `detail` is
+ * for the log only: the provider's error type and message, which name the
+ * cause (a wrong model id, an unsupported parameter) and never hold the key
+ * or the request. */
 export class ProviderError extends Error {
   readonly status: number | undefined
   readonly retryable: boolean
-  constructor(message: string, status?: number, retryable = false) {
+  readonly detail: string | undefined
+  constructor(message: string, status?: number, retryable = false, detail?: string) {
     super(message)
     this.name = 'ProviderError'
     this.status = status
     this.retryable = retryable
+    this.detail = detail
   }
+}
+
+const MAX_DETAIL = 300
+
+/** The log detail of an SDK error: its class and message, cut short. */
+export function errorDetail(err: unknown): string | undefined {
+  if (!(err instanceof Error)) return undefined
+  return `${err.constructor.name}: ${err.message}`.slice(0, MAX_DETAIL)
 }

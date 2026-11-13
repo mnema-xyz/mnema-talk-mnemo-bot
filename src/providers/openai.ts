@@ -2,7 +2,7 @@
 // The same file serves every OpenAI-compatible server (Ollama, OpenRouter,
 // LM Studio, vLLM, ...): they differ only in the base URL and the key.
 import OpenAI from 'openai'
-import { ProviderError, type ChatRequest, type ChatResponse, type Provider, type StopReason, type ToolCall, type Turn } from './types.ts'
+import { errorDetail, ProviderError, type ChatRequest, type ChatResponse, type Provider, type StopReason, type ToolCall, type Turn } from './types.ts'
 
 export interface OpenAIOptions {
   /** `openai` or `openai-compatible`; only changes the name in logs. */
@@ -11,6 +11,8 @@ export interface OpenAIOptions {
   model: string
   baseUrl?: string | undefined
   timeoutMs: number
+  /** Replaces the HTTP client; the tests use it. */
+  fetch?: typeof fetch | undefined
 }
 
 type Msg = OpenAI.Chat.Completions.ChatCompletionMessageParam
@@ -21,6 +23,7 @@ export function openaiProvider(opts: OpenAIOptions): Provider {
     ...(opts.baseUrl ? { baseURL: opts.baseUrl } : {}),
     timeout: opts.timeoutMs,
     maxRetries: 1,
+    ...(opts.fetch ? { fetch: opts.fetch } : {}),
   })
 
   return {
@@ -127,6 +130,11 @@ function stopReason(r: string | null, refusal: string | null | undefined): StopR
 }
 
 function toProviderError(err: unknown): ProviderError {
+  const e = classify(err)
+  return new ProviderError(e.message, e.status, e.retryable, errorDetail(err))
+}
+
+function classify(err: unknown): ProviderError {
   if (err instanceof OpenAI.APIConnectionTimeoutError) return new ProviderError('the AI provider timed out', undefined, true)
   if (err instanceof OpenAI.APIUserAbortError) return new ProviderError('the request was cancelled')
   if (err instanceof OpenAI.AuthenticationError) return new ProviderError('the AI provider refused the API key', 401)

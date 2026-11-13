@@ -151,6 +151,27 @@ describe('Engine', () => {
     assert.equal(refusal.kind === 'answer' && refusal.text, 'I can not help with that one.')
   })
 
+  it('logs the provider error detail, but posts only the plain message', async () => {
+    const lines: Record<string, unknown>[] = []
+    const failing: Provider = {
+      name: 'x',
+      model: 'm',
+      chat: () => Promise.reject(new ProviderError('the AI provider answered with an error (400)', 400, false, 'BadRequestError: 400 model: m is not valid')),
+    }
+    const e = new Engine({
+      provider: failing,
+      tools: BUILTIN_TOOLS,
+      settings,
+      memberLimit: new RateLimiter(3, 60_000),
+      channelLimit: new RateLimiter(5, 60_000),
+      budget: new Budget({ dailyTokens: 0, dailyCostUsd: 0, inputUsdPerMTok: 0, outputUsdPerMTok: 0 }),
+      log: { ...silentLogger, warn: (msg, f) => lines.push({ msg, ...f }) },
+    })
+    const r = await e.ask({ ...ask, question: 'q' })
+    assert.doesNotMatch(r.text, /not valid/)
+    assert.deepEqual(lines[0], { msg: 'provider_error', provider: 'x', status: 400, message: 'the AI provider answered with an error (400)', detail: 'BadRequestError: 400 model: m is not valid' })
+  })
+
   it('passes the provider timeout as an abort signal', async () => {
     const slow: Provider = {
       name: 'slow',

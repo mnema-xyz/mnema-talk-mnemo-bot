@@ -1,6 +1,6 @@
 // Anthropic's Messages API with tool use, through the official SDK.
 import Anthropic from '@anthropic-ai/sdk'
-import { ProviderError, type ChatRequest, type ChatResponse, type Provider, type StopReason, type Turn } from './types.ts'
+import { errorDetail, ProviderError, type ChatRequest, type ChatResponse, type Provider, type StopReason, type Turn } from './types.ts'
 
 export interface AnthropicOptions {
   apiKey: string
@@ -10,6 +10,8 @@ export interface AnthropicOptions {
   /** `low` keeps answers quick and cheap; raise it for harder questions. */
   effort: 'low' | 'medium' | 'high'
   timeoutMs: number
+  /** Replaces the HTTP client; the tests use it. */
+  fetch?: typeof fetch | undefined
 }
 
 export function anthropicProvider(opts: AnthropicOptions): Provider {
@@ -18,6 +20,7 @@ export function anthropicProvider(opts: AnthropicOptions): Provider {
     ...(opts.baseUrl ? { baseURL: opts.baseUrl } : {}),
     timeout: opts.timeoutMs,
     maxRetries: 1,
+    ...(opts.fetch ? { fetch: opts.fetch } : {}),
   })
 
   return {
@@ -119,6 +122,11 @@ function stopReason(s: Anthropic.Message['stop_reason']): StopReason {
 }
 
 function toProviderError(err: unknown): ProviderError {
+  const e = classify(err)
+  return new ProviderError(e.message, e.status, e.retryable, errorDetail(err))
+}
+
+function classify(err: unknown): ProviderError {
   if (err instanceof Anthropic.APIConnectionTimeoutError) return new ProviderError('the AI provider timed out', undefined, true)
   if (err instanceof Anthropic.APIUserAbortError) return new ProviderError('the request was cancelled')
   if (err instanceof Anthropic.AuthenticationError) return new ProviderError('the AI provider refused the API key', 401)

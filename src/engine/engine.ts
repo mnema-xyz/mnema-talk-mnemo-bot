@@ -137,7 +137,8 @@ export class Engine {
         })
       } catch (err) {
         const message = err instanceof ProviderError ? err.message : 'the AI provider call failed'
-        this.d.log.warn('provider_error', { provider: this.d.provider.name, status: err instanceof ProviderError ? err.status : undefined, message })
+        const pe = err instanceof ProviderError ? err : undefined
+        this.d.log.warn('provider_error', { provider: this.d.provider.name, status: pe?.status, message, detail: pe?.detail })
         return { kind: 'refused', reason: 'provider', retryMs: 0, text: `Sorry, I could not answer: ${message}. Try again in a moment.` }
       }
       usage.inputTokens += res.usage.inputTokens
