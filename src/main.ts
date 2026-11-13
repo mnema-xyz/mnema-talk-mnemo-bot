@@ -21,7 +21,7 @@ try {
 } catch (err) {
   if (err instanceof ConfigError) {
     console.error(err.message)
-    console.error('\nSee the configuration reference: https://github.com/mnema-xyz/mnema-talk-mnemo-bot#configuration')
+    console.error('\nSee the configuration reference: https://github.com/mnema-xyz/talk-mnemo-bot#configuration')
     process.exit(78) // EX_CONFIG
   }
   throw err
