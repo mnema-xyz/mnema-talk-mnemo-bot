@@ -399,7 +399,7 @@ keep it working:
 call then logs one `anthropic_cache` line:
 
 ```json
-{"msg":"anthropic_cache","model":"claude-haiku-5-5","input_tokens":42,"cache_read_input_tokens":3900,"cache_creation_input_tokens":0,"output_tokens":120}
+{"time":"2026-11-13T12:00:00.000Z","level":"debug","msg":"anthropic_cache","model":"claude-haiku-5-5","input_tokens":42,"cache_read_input_tokens":3900,"cache_creation_input_tokens":0,"output_tokens":120}
 ```
 
 The first call after a pause of more than 5 minutes writes the cache
