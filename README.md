@@ -539,7 +539,7 @@ the bot platform branch in [`vendor/`](vendor/). Switching to the release is
 one line in `package.json`:
 
 ```diff
--    "mnema-talk-sdk": "file:vendor/mnema-talk-sdk-6cce1efec.tgz",
+-    "mnema-talk-sdk": "file:vendor/mnema-talk-sdk-9d5c8a665.tgz",
 +    "mnema-talk-sdk": "https://github.com/msch128/mnema-talk/releases/download/vX.Y.Z/mnema-talk-sdk-X.Y.Z.tgz",
 ```
 
