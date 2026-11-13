@@ -206,6 +206,27 @@ describe('regeneration limit', () => {
     assert.match(other.sent[0]?.content ?? '', /Only the person who asked/)
   })
 
+  it('refuses a forged Regenerate id once the limit is reached, and when it is 0', async () => {
+    for (const max of [0, 1]) {
+      const t = setup({ maxRegenerations: max })
+      const asked = await ask(t)
+      const regen = asked.regen
+      let last = asked.last
+      if (max === 1) {
+        const r = fake({ customId: regen ?? '' }, 'u1')
+        await t.run(r.i)
+        last = r.sent.at(-1)
+      }
+      const follow = last?.components?.[0]?.components.find((c) => c.label === 'Follow up')
+      const forged = fake({ customId: (follow?.custom_id ?? follow?.customId ?? '').replace(':follow:', ':regen:') }, 'u1')
+      const before = t.posted.length
+      await t.run(forged.i)
+      assert.match(forged.sent[0]?.content ?? '', /as often as allowed/)
+      assert.equal(forged.sent.length, 1)
+      assert.equal(t.posted.length, before)
+    }
+  })
+
   it('regenerates once on a double click', async () => {
     const t = setup()
     const first = await ask(t)

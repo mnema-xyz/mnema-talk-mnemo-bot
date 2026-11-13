@@ -287,6 +287,11 @@ export class MnemoBot {
       await i.reply({ content: 'Only the person who asked can regenerate this answer.', ephemeral: true, allowed_mentions: NO_PINGS })
       return
     }
+    // The button is hidden at the limit, but a custom id can be forged.
+    if (rec.regenerations >= this.s.maxRegenerations) {
+      await i.reply({ content: 'This answer was regenerated as often as allowed. Ask a new question or a follow-up.', ephemeral: true, allowed_mentions: NO_PINGS })
+      return
+    }
     if (await this.refusedPrivately(i)) return
     // Claimed with no await between check and delete, so a double click
     // regenerates once.
