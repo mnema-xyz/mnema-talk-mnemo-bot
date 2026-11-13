@@ -148,6 +148,14 @@ jobs:
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          cosign verify "$IMAGE@$DIGEST" \
-            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            --certificate-identity-regexp '^https://github\.com/mnema-xyz/mnema-talk-mnemo-bot/\.github/workflows/release\.yml@refs/(heads/main|tags/v.+)$'
+          # This run's own identity: this workflow file at the ref it runs on.
+          for attempt in 1 2 3; do
+            if cosign verify "$IMAGE@$DIGEST" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              --certificate-identity "https://github.com/${GITHUB_WORKFLOW_REF}"; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "::error::the signature does not verify"
+          exit 1
