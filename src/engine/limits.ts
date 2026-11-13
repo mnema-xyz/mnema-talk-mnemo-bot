@@ -55,8 +55,17 @@ export class OncePerWindow {
   }
 }
 
+/** Prompt cache prices as multiples of the input price (5-minute cache):
+ * a read costs a tenth, a write a quarter more. Models with cheaper reads
+ * are charged a little too much, never too little. */
+export const CACHE_READ_FACTOR = 0.1
+export const CACHE_WRITE_FACTOR = 1.25
+
 export interface BudgetSettings {
-  /** Tokens (input + output) per UTC day; 0 means no token limit. */
+  /** Tokens (input + output) per UTC day, cached prompt tokens included:
+   * a token read from the cache still went through the model, so the token
+   * budget measures volume, and the cost budget measures money. 0 means no
+   * token limit. */
   dailyTokens: number
   /** US dollars per UTC day; 0 means no cost limit. Needs prices. */
   dailyCostUsd: number
@@ -71,7 +80,11 @@ interface DayUsage {
   day: string
   inputTokens: number
   outputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
 }
+
+const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0)
 
 /** A call's estimated usage, held until the call reports what it used. */
 export interface Reservation {
@@ -93,7 +106,7 @@ export class Budget {
   constructor(s: BudgetSettings, now: () => Date = () => new Date()) {
     this.s = s
     this.now = now
-    this.usage = this.load() ?? { day: this.today(), inputTokens: 0, outputTokens: 0 }
+    this.usage = this.load() ?? { day: this.today(), inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }
   }
 
   private today(): string {
@@ -102,12 +115,18 @@ export class Budget {
 
   private current(): DayUsage {
     const day = this.today()
-    if (this.usage.day !== day) this.usage = { day, inputTokens: 0, outputTokens: 0 }
+    if (this.usage.day !== day) this.usage = { day, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }
     return this.usage
   }
 
-  costUsd(u: { inputTokens: number; outputTokens: number }): number {
-    return (u.inputTokens * this.s.inputUsdPerMTok + u.outputTokens * this.s.outputUsdPerMTok) / 1_000_000
+  /** `inputTokens` includes the cached ones; reads and writes are priced
+   * at their factor, the rest at the input price. */
+  costUsd(u: Usage): number {
+    const read = Math.min(u.cacheReadTokens ?? 0, u.inputTokens)
+    const write = Math.min(u.cacheWriteTokens ?? 0, u.inputTokens - read)
+    const plain = u.inputTokens - read - write
+    const input = (plain + read * CACHE_READ_FACTOR + write * CACHE_WRITE_FACTOR) * this.s.inputUsdPerMTok
+    return (input + u.outputTokens * this.s.outputUsdPerMTok) / 1_000_000
   }
 
   /** True while anything is left (spent and reserved below the limits). */
@@ -134,9 +153,13 @@ export class Budget {
 
   private fits(extra: Usage, inclusive: boolean): boolean {
     const u = this.current()
+    // Spent usage is priced as it was billed; the estimates (reserved and
+    // extra) carry no cache split and count at the full input price.
     const total = {
       inputTokens: u.inputTokens + this.reserved.inputTokens + extra.inputTokens,
       outputTokens: u.outputTokens + this.reserved.outputTokens + extra.outputTokens,
+      cacheReadTokens: u.cacheReadTokens,
+      cacheWriteTokens: u.cacheWriteTokens,
     }
     const over = (used: number, limit: number) => (inclusive ? used > limit : used >= limit)
     if (this.s.dailyTokens > 0 && over(total.inputTokens + total.outputTokens, this.s.dailyTokens)) return false
@@ -148,6 +171,8 @@ export class Budget {
     const u = this.current()
     u.inputTokens += usage.inputTokens
     u.outputTokens += usage.outputTokens
+    u.cacheReadTokens += usage.cacheReadTokens ?? 0
+    u.cacheWriteTokens += usage.cacheWriteTokens ?? 0
     this.save()
   }
 
@@ -161,7 +186,8 @@ export class Budget {
     try {
       const v = JSON.parse(readFileSync(this.s.stateFile, 'utf8')) as Partial<DayUsage>
       if (v.day === this.today() && typeof v.inputTokens === 'number' && typeof v.outputTokens === 'number') {
-        return { day: v.day, inputTokens: v.inputTokens, outputTokens: v.outputTokens }
+        // A file from before the cache counters has none: they start at zero.
+        return { day: v.day, inputTokens: v.inputTokens, outputTokens: v.outputTokens, cacheReadTokens: num(v.cacheReadTokens), cacheWriteTokens: num(v.cacheWriteTokens) }
       }
     } catch {
       // No file yet, or unreadable: start the day at zero.

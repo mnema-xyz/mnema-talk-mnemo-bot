@@ -37,7 +37,13 @@ export type Turn =
   | { role: 'tool'; results: ToolResult[] }
 
 export interface ChatRequest {
+  /** The stable instructions: byte-identical from one request to the next,
+   * so a provider can cache them. Nothing per request belongs here. */
   system: string
+  /** Facts that change per request (the time, the asker's name). Providers
+   * hand it to the model after `system` and before the conversation's last
+   * user turn, never inside `system`, so the cached prefix survives. */
+  context?: string | undefined
   turns: Turn[]
   tools: ToolSpec[]
   maxOutputTokens: number
@@ -47,8 +53,19 @@ export interface ChatRequest {
 export type StopReason = 'end' | 'tool_use' | 'max_tokens' | 'refusal' | 'other'
 
 export interface Usage {
+  /** Every prompt token the call processed, cached ones included. */
   inputTokens: number
   outputTokens: number
+  /** Of `inputTokens`: served from the provider's prompt cache (cheap). */
+  cacheReadTokens?: number | undefined
+  /** Of `inputTokens`: written to the prompt cache (a little dearer). */
+  cacheWriteTokens?: number | undefined
+}
+
+/** The system prompt and the per-request context as one text, for providers
+ * that do not cache explicitly. Same words the model always saw. */
+export function systemWithContext(req: Pick<ChatRequest, 'system' | 'context'>): string {
+  return req.context ? `${req.system}\n\n${req.context}` : req.system
 }
 
 export interface ChatResponse {

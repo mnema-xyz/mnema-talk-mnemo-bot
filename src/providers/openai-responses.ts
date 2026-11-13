@@ -6,7 +6,7 @@
 // items of one call, reasoning items with their encrypted content included,
 // go back unchanged with the tool results, as OpenAI asks for.
 import type OpenAI from 'openai'
-import type { ChatRequest, ChatResponse, StopReason, ToolCall, Turn } from './types.ts'
+import { systemWithContext, type ChatRequest, type ChatResponse, type StopReason, type ToolCall, type Turn } from './types.ts'
 
 type Item = OpenAI.Responses.ResponseInputItem
 
@@ -14,7 +14,7 @@ export async function chatViaResponses(client: OpenAI, model: string, req: ChatR
   const res = await client.responses.create(
     {
       model,
-      instructions: req.system,
+      instructions: systemWithContext(req),
       input: toInput(req.turns),
       max_output_tokens: req.maxOutputTokens,
       store: false,

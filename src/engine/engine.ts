@@ -7,7 +7,7 @@ import { runTool, toolSpecs } from '../tools/index.ts'
 import type { Tool, ToolContext } from '../tools/types.ts'
 import { Budget, RateLimiter } from './limits.ts'
 import type { HistoryTurn } from './memory.ts'
-import { buildSystemPrompt } from './prompt.ts'
+import { buildContext, buildSystemPrompt } from './prompt.ts'
 
 export interface EngineSettings {
   persona: string
@@ -114,7 +114,8 @@ export class Engine {
 
     const s = this.d.settings
     const name = s.sendDisplayName ? cleanName(input.askerName) : undefined
-    const system = buildSystemPrompt(s.persona, this.now(), name)
+    const system = buildSystemPrompt(s.persona)
+    const context = buildContext(this.now(), name)
     const specs = s.maxToolCalls > 0 ? toolSpecs(this.d.tools) : []
     const turns: Turn[] = [
       ...input.history.map((h): Turn => (h.role === 'user' ? { role: 'user', text: h.text } : { role: 'assistant', text: h.text, toolCalls: [] })),
@@ -125,7 +126,7 @@ export class Engine {
     let text = ''
 
     const specsTokens = estimateTokens(JSON.stringify(specs))
-    const systemTokens = estimateTokens(system)
+    const systemTokens = estimateTokens(system) + estimateTokens(context)
     for (let round = 0; round < MAX_ROUNDS; round++) {
       // Hold this call's worst case in the budget until it reports its usage.
       const worstCase = { inputTokens: systemTokens + specsTokens + turnsTokens(turns), outputTokens: s.maxOutputTokens }
@@ -138,6 +139,7 @@ export class Engine {
       try {
         res = await this.d.provider.chat({
           system,
+          context,
           turns,
           tools: specs,
           maxOutputTokens: s.maxOutputTokens,
@@ -152,8 +154,7 @@ export class Engine {
         this.d.log.warn('provider_error', { provider: this.d.provider.name, status: pe?.status, message, detail: pe?.detail })
         return { kind: 'refused', reason: 'provider', retryMs: 0, text: `Sorry, I could not answer: ${message}. Try again in a moment.` }
       }
-      usage.inputTokens += res.usage.inputTokens
-      usage.outputTokens += res.usage.outputTokens
+      addUsage(usage, res.usage)
       reservation.settle(res.usage)
       text = res.text
 
@@ -259,4 +260,12 @@ function cleanName(name: string | undefined): string | undefined {
   if (!name) return undefined
   const s = name.replace(/[\p{C}\n\r]+/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 40)
   return s || undefined
+}
+
+/** Adds one call's usage to the running total of an answer. */
+function addUsage(total: Usage, call: Usage): void {
+  total.inputTokens += call.inputTokens
+  total.outputTokens += call.outputTokens
+  if (call.cacheReadTokens) total.cacheReadTokens = (total.cacheReadTokens ?? 0) + call.cacheReadTokens
+  if (call.cacheWriteTokens) total.cacheWriteTokens = (total.cacheWriteTokens ?? 0) + call.cacheWriteTokens
 }

@@ -1,5 +1,6 @@
 // Anthropic's Messages API with tool use, through the official SDK.
 import Anthropic from '@anthropic-ai/sdk'
+import type { Logger } from '../log.ts'
 import { errorDetail, ProviderError, type ChatRequest, type ChatResponse, type Provider, type StopReason, type Turn } from './types.ts'
 
 export interface AnthropicOptions {
@@ -12,7 +13,15 @@ export interface AnthropicOptions {
   timeoutMs: number
   /** Replaces the HTTP client; the tests use it. */
   fetch?: typeof fetch | undefined
+  /** Where the cache hit counts go, at debug level. */
+  log?: Logger | undefined
 }
+
+// Prompt caching, 5-minute lifetime. One breakpoint ends the stable system
+// prompt (tools render before it, so they are cached with it); the request's
+// own `cache_control` lets the API move a second one along the growing
+// conversation, which is what a tool loop needs.
+const EPHEMERAL = { type: 'ephemeral' } as const
 
 export function anthropicProvider(opts: AnthropicOptions): Provider {
   const client = new Anthropic({
@@ -33,8 +42,9 @@ export function anthropicProvider(opts: AnthropicOptions): Provider {
           {
             model: opts.model,
             max_tokens: req.maxOutputTokens,
-            system: req.system,
-            messages: toMessages(req.turns),
+            cache_control: EPHEMERAL,
+            system: [{ type: 'text', text: req.system, cache_control: EPHEMERAL }],
+            messages: toMessages(req.turns, req.context),
             output_config: { effort: opts.effort },
             ...(req.tools.length > 0
               ? {
@@ -59,14 +69,26 @@ export function anthropicProvider(opts: AnthropicOptions): Provider {
       const toolCalls = res.content
         .filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
         .map((b) => ({ id: b.id, name: b.name, input: b.input }))
+      const cacheRead = res.usage.cache_read_input_tokens ?? 0
+      const cacheWrite = res.usage.cache_creation_input_tokens ?? 0
+      opts.log?.debug('anthropic_cache', {
+        model: opts.model,
+        input_tokens: res.usage.input_tokens,
+        cache_read_input_tokens: cacheRead,
+        cache_creation_input_tokens: cacheWrite,
+        output_tokens: res.usage.output_tokens,
+      })
       return {
         text,
         toolCalls,
         stop: stopReason(res.stop_reason),
         usage: {
-          inputTokens:
-            res.usage.input_tokens + (res.usage.cache_read_input_tokens ?? 0) + (res.usage.cache_creation_input_tokens ?? 0),
+          // The API's input_tokens is the uncached rest only; the total
+          // prompt is the sum, and the cached parts are priced apart.
+          inputTokens: res.usage.input_tokens + cacheRead + cacheWrite,
           outputTokens: res.usage.output_tokens,
+          ...(cacheRead > 0 ? { cacheReadTokens: cacheRead } : {}),
+          ...(cacheWrite > 0 ? { cacheWriteTokens: cacheWrite } : {}),
         },
         // Sent back unchanged with the tool results: thinking blocks must not
         // be edited or dropped inside one tool loop.
@@ -76,11 +98,18 @@ export function anthropicProvider(opts: AnthropicOptions): Provider {
   }
 }
 
-function toMessages(turns: Turn[]): Anthropic.MessageParam[] {
+/** The per-request context goes in front of the last user turn (the question
+ * being answered), so it sits at the same place in every round of a tool
+ * loop and never in the cached system prompt. */
+function toMessages(turns: Turn[], context?: string): Anthropic.MessageParam[] {
   const out: Anthropic.MessageParam[] = []
-  for (const t of turns) {
+  const last = turns.findLastIndex((t) => t.role === 'user')
+  for (const [i, t] of turns.entries()) {
     if (t.role === 'user') {
-      out.push({ role: 'user', content: t.text })
+      out.push({
+        role: 'user',
+        content: i === last && context ? [{ type: 'text', text: `Context from the chat (not written by the user):\n${context}` }, { type: 'text', text: t.text }] : t.text,
+      })
     } else if (t.role === 'assistant') {
       if (t.raw !== undefined) {
         out.push({ role: 'assistant', content: t.raw as Anthropic.ContentBlockParam[] })
