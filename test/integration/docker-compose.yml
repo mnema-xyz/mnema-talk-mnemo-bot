@@ -1,6 +1,6 @@
 # A throwaway Mnema Talk for the integration test (scripts/integration.sh):
 # PostgreSQL, SeaweedFS and the server built from a mnema-talk checkout
-# (MNEMA_SRC). Loopback ports only, no volumes: `down -v` removes everything.
+# (MNEMA_SRC, built by the script). Loopback ports only, no volumes: `down -v` removes everything.
 services:
   postgres:
     image: postgres:18-alpine
@@ -25,7 +25,7 @@ services:
       start_period: 5s
 
   mnema:
-    build: ${MNEMA_SRC:?set MNEMA_SRC to a mnema-talk checkout}
+    # Built by scripts/integration.sh from MNEMA_SRC (it needs BuildKit).
     image: mnema-talk:mnemo-it
     depends_on:
       postgres: { condition: service_healthy }

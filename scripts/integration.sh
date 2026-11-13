@@ -29,8 +29,24 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "==> building and starting Mnema Talk from $MNEMA_SRC (project $PROJECT, port $IT_APP_PORT)"
-"${COMPOSE[@]}" up -d --build --wait mnema || "${COMPOSE[@]}" up -d --build mnema
+# Mnema Talk's Dockerfile needs BuildKit: `docker buildx`, or the plugin
+# binary itself where the CLI does not know it (OrbStack ships one).
+if docker buildx version >/dev/null 2>&1; then
+  BUILDX=(docker buildx)
+elif command -v docker-buildx >/dev/null 2>&1; then
+  BUILDX=(docker-buildx)
+elif [ -x /Applications/OrbStack.app/Contents/MacOS/xbin/docker-buildx ]; then
+  BUILDX=(/Applications/OrbStack.app/Contents/MacOS/xbin/docker-buildx)
+else
+  echo "BuildKit (docker buildx) is needed to build Mnema Talk" >&2
+  exit 1
+fi
+
+echo "==> building Mnema Talk from $MNEMA_SRC"
+"${BUILDX[@]}" build --load -t mnema-talk:mnemo-it "$MNEMA_SRC"
+
+echo "==> starting the stack (project $PROJECT, port $IT_APP_PORT)"
+"${COMPOSE[@]}" up -d mnema
 for _ in $(seq 1 90); do
   if curl -fsS "http://127.0.0.1:$IT_APP_PORT/api/health" >/dev/null 2>&1; then break; fi
   sleep 1
