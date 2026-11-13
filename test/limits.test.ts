@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
-import { Budget, RateLimiter } from '../src/engine/limits.ts'
+import { Budget, OncePerWindow, RateLimiter } from '../src/engine/limits.ts'
 import { boundHistory, LruMap } from '../src/engine/memory.ts'
 
 describe('RateLimiter', () => {
@@ -21,6 +21,18 @@ describe('RateLimiter', () => {
   it('is off at 0', () => {
     const rl = new RateLimiter(0, 1000)
     for (let i = 0; i < 100; i++) assert.equal(rl.take('a'), 0)
+  })
+})
+
+describe('OncePerWindow', () => {
+  it('says yes once per key until the window ends', () => {
+    let t = 0
+    const once = new OncePerWindow(() => t)
+    assert.equal(once.first('u1', 30_000), true)
+    assert.equal(once.first('u1', 30_000), false)
+    assert.equal(once.first('u2', 30_000), true)
+    t = 30_001
+    assert.equal(once.first('u1', 30_000), true)
   })
 })
 

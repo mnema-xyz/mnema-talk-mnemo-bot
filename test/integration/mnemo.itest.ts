@@ -116,6 +116,7 @@ describe('Mnemo on a real Mnema Talk', { skip: !URL_ && 'run through scripts/int
         MNEMO_PROVIDER: 'fake',
         MNEMO_HEALTH_PORT: String(port),
         MNEMO_LOG_LEVEL: 'debug',
+        MNEMO_MEMBER_LIMIT_PER_MINUTE: '8',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -178,6 +179,26 @@ describe('Mnemo on a real Mnema Talk', { skip: !URL_ && 'run through scripts/int
       fromBot(await channelMessages()).find((m) => m.id !== answer.id && m.content === 'You asked: hello there'),
     )
     assert.deepEqual(labels(again), ['Regenerate', 'Details', 'Follow up'])
+  })
+
+  it('tells a member who floods it about the limit once, and drops the rest quietly', async () => {
+    const asked: Msg[] = []
+    for (let n = 0; n < 10; n++) {
+      asked.push(await owner.ok<Msg>('POST', `/api/channels/${channelId}/messages`, { content: `@${botUsername} flood ${n}` }))
+    }
+    const replies = async () => (await Promise.all(asked.map(async (q) => fromBot(await thread(q.id))))).flat()
+    await until('the refusal', async () => ((await replies()).some((m) => /asking quickly/.test(m.content)) ? true : undefined))
+    // Bot posts are limited to 5 per 5 s per channel, so late ones trickle in:
+    // wait until nothing new arrived for 7 s.
+    let all = await replies()
+    for (let quiet = 0; quiet < 7; ) {
+      await new Promise((r) => setTimeout(r, 1000))
+      const now = await replies()
+      quiet = now.length === all.length ? quiet + 1 : 0
+      all = now
+    }
+    assert.equal(all.filter((m) => /asking quickly/.test(m.content)).length, 1, JSON.stringify(all.map((m) => m.content)))
+    assert.ok(all.length < asked.length, 'some mentions got no post at all')
   })
 
   it('reports healthy and stops cleanly on SIGTERM', async () => {

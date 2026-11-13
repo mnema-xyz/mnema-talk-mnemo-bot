@@ -115,6 +115,18 @@ describe('Engine', () => {
     assert.equal(c.kind === 'refused' && c.reason, 'channel_rate')
   })
 
+  it('admits before queueing: a refusal says how long to wait and costs no provider call', async () => {
+    const p = fakeProvider()
+    const e = engine(p)
+    for (let i = 0; i < 3; i++) assert.equal(e.admit('u1', 'c1'), undefined)
+    const r = e.admit('u1', 'c1')
+    assert.equal(r?.reason, 'member_rate')
+    assert.ok(r && r.retryMs > 0 && r.retryMs <= 60_000)
+    // An admitted question is not counted twice.
+    assert.equal((await e.ask({ ...ask, question: 'q', admitted: true })).kind, 'answer')
+    assert.equal(p.requests.length, 1)
+  })
+
   it('refuses with a clear message when the daily budget is used up', async () => {
     const budget = new Budget({ dailyTokens: 30, dailyCostUsd: 0, inputUsdPerMTok: 0, outputUsdPerMTok: 0 })
     const e = engine(fakeProvider(), {}, budget)

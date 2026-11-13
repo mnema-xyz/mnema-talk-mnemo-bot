@@ -36,6 +36,25 @@ export class RateLimiter {
   }
 }
 
+/** Remembers that something was said to a key, for a while: a refusal is
+ * posted once per member and window, not once per message. */
+export class OncePerWindow {
+  private readonly until = new Map<string, number>()
+  private readonly now: () => number
+  constructor(now: () => number = Date.now) {
+    this.now = now
+  }
+
+  /** True the first time for `key` within `windowMs`. */
+  first(key: string, windowMs: number): boolean {
+    const t = this.now()
+    if ((this.until.get(key) ?? 0) > t) return false
+    this.until.set(key, t + windowMs)
+    if (this.until.size > 10_000) for (const [k, u] of this.until) if (u <= t) this.until.delete(k)
+    return true
+  }
+}
+
 export interface BudgetSettings {
   /** Tokens (input + output) per UTC day; 0 means no token limit. */
   dailyTokens: number

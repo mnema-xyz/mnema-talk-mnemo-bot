@@ -17,7 +17,7 @@ import {
   type Message,
 } from 'mnema-talk-sdk'
 import type { AskResult, Engine } from '../engine/engine.ts'
-import type { Budget } from '../engine/limits.ts'
+import { OncePerWindow, type Budget } from '../engine/limits.ts'
 import { boundHistory, LruMap, type HistoryTurn, type ThreadLimits } from '../engine/memory.ts'
 import { splitMessage } from '../engine/split.ts'
 import type { Logger } from '../log.ts'
@@ -58,6 +58,8 @@ export class MnemoBot {
   private selfHandle = ''
   private readonly threads: LruMap<HistoryTurn[]>
   private readonly answers = new LruMap<AnswerRecord>(MAX_ANSWERS, 24 * 3600_000)
+  /** Who was already told about a limit in this window. */
+  private readonly told = new OncePerWindow()
   /** One question at a time per thread, so answers keep their order. */
   private readonly queues = new Map<string, Promise<void>>()
 
@@ -120,8 +122,16 @@ export class MnemoBot {
     // A mention in the channel starts a thread under the question; one inside
     // a thread is answered there.
     const threadId = m.parent_id ?? (this.s.replyInThread ? m.id : undefined)
-    const key = threadId ?? m.id
-    await this.serial(key, () => this.answerMessage(m, threadId))
+    const where = threadId ? { parent_id: threadId } : { message_reference: { message_id: m.id } }
+
+    // Limits are checked before queueing, so a flood neither queues up nor
+    // gets one public refusal per message: the member hears it once.
+    const refused = this.engine.admit(m.user_id, m.channel_id)
+    if (refused) {
+      if (this.told.first(`${m.user_id}:${refused.reason}`, refused.retryMs)) await this.post(m.channel_id, refused.text, undefined, where)
+      return
+    }
+    await this.serial(threadId ?? m.id, () => this.answerMessage(m, threadId))
   }
 
   private async answerMessage(m: Message, threadId: string | undefined): Promise<void> {
@@ -135,6 +145,7 @@ export class MnemoBot {
         userId: m.user_id,
         channelId: m.channel_id,
         askerName: m.display_name || m.username,
+        admitted: true,
       })
       const answerId = this.remember(result, { question, history, askerId: m.user_id, channelId: m.channel_id, threadId, ephemeral: false })
       const components = answerId ? this.buttons(answerId, false) : undefined
@@ -225,6 +236,7 @@ export class MnemoBot {
       return
     }
     const question = String(i.options.get('question') ?? '')
+    if (await this.refusedPrivately(i)) return
     await i.deferReply({ ephemeral })
     await this.answerInteraction(i, { question, history: [], ephemeral, first: 'edit' })
   }
@@ -233,6 +245,7 @@ export class MnemoBot {
     const rec = this.answers.get(answerId)
     const question = i.fields.get('question') ?? ''
     const ephemeral = rec?.ephemeral ?? false
+    if (await this.refusedPrivately(i)) return
     await i.deferReply({ ephemeral })
     const history = rec ? boundHistory([...rec.history, { role: 'user', text: rec.question }, { role: 'assistant', text: rec.answer }], this.s.thread) : []
     await this.answerInteraction(i, { question, history, ephemeral, first: 'edit' })
@@ -243,6 +256,7 @@ export class MnemoBot {
       await i.reply({ content: 'Only the person who asked can regenerate this answer.', ephemeral: true, allowed_mentions: NO_PINGS })
       return
     }
+    if (await this.refusedPrivately(i)) return
     await i.deferUpdate()
     // The old answer stays readable; its buttons go, the new answer gets them.
     await i.editReply({ components: [] }).catch(() => undefined)
@@ -250,7 +264,14 @@ export class MnemoBot {
     if (rec.threadId) {
       const threadId = rec.threadId
       await this.serial(threadId, async () => {
-        const result = await this.engine.ask({ question: rec.question, history: rec.history, userId: i.user.id, channelId: rec.channelId, askerName: i.user.display_name })
+        const result = await this.engine.ask({
+          question: rec.question,
+          history: rec.history,
+          userId: i.user.id,
+          channelId: rec.channelId,
+          askerName: i.user.display_name,
+          admitted: true,
+        })
         const newId = this.remember(result, { ...rec, ephemeral: false })
         await this.post(rec.channelId, result.text, newId ? this.buttons(newId, false) : undefined, { parent_id: threadId })
         if (result.kind === 'answer') this.replaceInThread(threadId, rec.answer, result.text)
@@ -258,6 +279,14 @@ export class MnemoBot {
       return
     }
     await this.answerInteraction(i, { question: rec.question, history: rec.history, ephemeral: rec.ephemeral, first: 'followup' })
+  }
+
+  /** Checks the limits for an interaction; a refusal goes only to the member. */
+  private async refusedPrivately(i: Interaction): Promise<boolean> {
+    const refused = this.engine.admit(i.user.id, i.channelId)
+    if (!refused) return false
+    await i.reply({ content: refused.text, ephemeral: true, allowed_mentions: NO_PINGS })
+    return true
   }
 
   /** Answers through the interaction: the first part as the reply (or a
@@ -272,6 +301,7 @@ export class MnemoBot {
       userId: i.user.id,
       channelId: i.channelId,
       askerName: i.user.display_name || i.user.username,
+      admitted: true,
     })
     const answerId = this.remember(result, { question: q.question, history: q.history, askerId: i.user.id, channelId: i.channelId, ephemeral: q.ephemeral })
     const parts = splitMessage(result.text)

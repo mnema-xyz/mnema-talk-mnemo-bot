@@ -29,9 +29,18 @@ export interface ToolUse {
   ok: boolean
 }
 
-export type AskResult =
-  | { kind: 'answer'; text: string; toolsUsed: ToolUse[]; usage: Usage; model: string; provider: string }
-  | { kind: 'refused'; reason: 'member_rate' | 'channel_rate' | 'budget' | 'provider' | 'empty'; text: string }
+export type RefusalReason = 'member_rate' | 'channel_rate' | 'budget' | 'provider' | 'empty'
+
+/** Why a question is not answered, in words for the asker. */
+export interface Refusal {
+  kind: 'refused'
+  reason: RefusalReason
+  text: string
+  /** How long until asking again can work. */
+  retryMs: number
+}
+
+export type AskResult = { kind: 'answer'; text: string; toolsUsed: ToolUse[]; usage: Usage; model: string; provider: string } | Refusal
 
 export interface AskInput {
   question: string
@@ -39,6 +48,8 @@ export interface AskInput {
   userId: string
   channelId: string
   askerName?: string | undefined
+  /** Set when `admit()` already let this question in. */
+  admitted?: boolean
 }
 
 export interface EngineDeps {
@@ -70,23 +81,36 @@ export class Engine {
     return this.d.provider.model
   }
 
-  async ask(input: AskInput): Promise<AskResult> {
-    const question = input.question.trim()
-    if (!question) return { kind: 'refused', reason: 'empty', text: 'What would you like to know? Ask me anything.' }
-
-    const memberWait = this.d.memberLimit.take(input.userId)
+  /**
+   * Counts a question against the rate limits and checks the budget, before
+   * it is queued or deferred. Returns a refusal, or undefined when it may go
+   * on (then pass `admitted: true` to `ask`).
+   */
+  admit(userId: string, channelId: string): Refusal | undefined {
+    const memberWait = this.d.memberLimit.take(userId)
     if (memberWait > 0) {
-      return { kind: 'refused', reason: 'member_rate', text: `You are asking quickly. Try again in ${Math.ceil(memberWait / 1000)} s.` }
+      return { kind: 'refused', reason: 'member_rate', retryMs: memberWait, text: `You are asking quickly. Try again in ${Math.ceil(memberWait / 1000)} s.` }
     }
-    const channelWait = this.d.channelLimit.take(input.channelId)
+    const channelWait = this.d.channelLimit.take(channelId)
     if (channelWait > 0) {
       return {
         kind: 'refused',
         reason: 'channel_rate',
+        retryMs: channelWait,
         text: `This channel is keeping me busy. Try again in ${Math.ceil(channelWait / 1000)} s.`,
       }
     }
-    if (!this.d.budget.hasRoom()) return budgetRefusal()
+    if (!this.d.budget.hasRoom()) return budgetRefusal(this.now())
+    return undefined
+  }
+
+  async ask(input: AskInput): Promise<AskResult> {
+    const question = input.question.trim()
+    if (!question) return { kind: 'refused', reason: 'empty', retryMs: 0, text: 'What would you like to know? Ask me anything.' }
+    if (!input.admitted) {
+      const refused = this.admit(input.userId, input.channelId)
+      if (refused) return refused
+    }
 
     const s = this.d.settings
     const name = s.sendDisplayName ? cleanName(input.askerName) : undefined
@@ -114,7 +138,7 @@ export class Engine {
       } catch (err) {
         const message = err instanceof ProviderError ? err.message : 'the AI provider call failed'
         this.d.log.warn('provider_error', { provider: this.d.provider.name, status: err instanceof ProviderError ? err.status : undefined, message })
-        return { kind: 'refused', reason: 'provider', text: `Sorry, I could not answer: ${message}. Try again in a moment.` }
+        return { kind: 'refused', reason: 'provider', retryMs: 0, text: `Sorry, I could not answer: ${message}. Try again in a moment.` }
       }
       usage.inputTokens += res.usage.inputTokens
       usage.outputTokens += res.usage.outputTokens
@@ -137,7 +161,7 @@ export class Engine {
 
     text = text.trim()
     if (!text) {
-      if (!this.d.budget.hasRoom()) return budgetRefusal()
+      if (!this.d.budget.hasRoom()) return budgetRefusal(this.now())
       text = 'Sorry, I could not come up with an answer. Try asking in another way.'
     }
     this.d.log.info('answered', {
@@ -180,10 +204,12 @@ export class Engine {
   }
 }
 
-function budgetRefusal(): AskResult {
+function budgetRefusal(now: Date): Refusal {
+  const midnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
   return {
     kind: 'refused',
     reason: 'budget',
+    retryMs: midnight - now.getTime(),
     text: 'I have used up today\'s budget for answers. It resets at midnight UTC; ask again then.',
   }
 }
