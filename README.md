@@ -59,6 +59,8 @@ npm ci
 npm run add-link -- https://talk.example.org
 ```
 
+(`npm ci` needs Node.js 24. Without it, use the paste option below.)
+
 Open the printed link while you are signed in. Mnema Talk shows what Mnemo
 asks for. **Tick the channels where Mnemo may work** (none are ticked at
 first), then confirm. Mnema Talk shows the bot's **token once**: copy it.
@@ -84,7 +86,9 @@ MNEMO_API_KEY=sk-ant-...             # your Anthropic key (default provider)
 ```
 
 Using OpenAI, OpenRouter or a local model instead? See
-[AI providers](#ai-providers).
+[AI providers](#ai-providers). No AI account yet? Set `MNEMO_PROVIDER=fake`
+and leave the key empty: Mnemo then echoes your question, which checks the
+connection, the permissions and the buttons without any costs.
 
 ### 3. Run
 
@@ -98,8 +102,7 @@ docker compose logs -f mnemo
 Or with Node.js 24:
 
 ```sh
-npm ci --omit=dev
-node --env-file=.env src/main.ts      # or: npm start, with the variables exported
+npm start        # reads .env; variables already in the environment win
 ```
 
 The log says `"msg":"ready"` once Mnemo is connected, and it shows as online
@@ -107,11 +110,8 @@ in the member list.
 
 ### 4. Ask
 
-In a channel you ticked, write `@` and pick Mnemo, or type `/ask`.
-
-Want to try it without an AI account first? Set `MNEMO_PROVIDER=fake`: Mnemo
-then echoes your question. This checks the connection, the permissions and
-the buttons without any costs.
+In a channel you ticked, write `@`, pick Mnemo from the list and ask, or
+type `/ask`. Nothing happens? See [Troubleshooting](#troubleshooting).
 
 ## How Mnemo answers
 

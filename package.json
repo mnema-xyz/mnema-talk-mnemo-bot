@@ -14,7 +14,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "start": "node src/main.ts",
+    "start": "node --env-file-if-exists=.env src/main.ts",
     "dev": "node --watch --env-file-if-exists=.env src/main.ts",
     "test": "node --test 'test/**/*.test.ts'",
     "test:integration": "node --test 'test/integration/*.itest.ts'",
