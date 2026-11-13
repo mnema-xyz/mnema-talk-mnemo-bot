@@ -355,7 +355,11 @@ network except the tools' lookups.
 You pay your AI provider for tokens. Each question costs one model call, plus
 one more for each round of tool use. A typical question with one tool round
 uses roughly 3,000 to 6,000 input tokens (the system prompt and tool
-descriptions are sent each time) and a few hundred output tokens.
+descriptions are sent each time) and a few hundred output tokens. On
+Anthropic, that repeated part is cached and billed at a tenth of the input
+price after the first call within 5 minutes (see
+[Prompt caching](#prompt-caching-anthropic)), so busy bots cost less than the
+figures below; they assume no caching.
 
 With the default `claude-haiku-5-5` ($0.10 per million input tokens, $0.50
 per million output tokens, list price at the time of writing), that is well
@@ -365,40 +369,50 @@ current prices.
 
 ### Prompt caching (Anthropic)
 
-With the `anthropic` provider Mnemo uses prompt caching (5-minute lifetime),
-which makes the repeated part of each call about ten times cheaper: the
-tool descriptions and the system prompt are sent again on every call and on
-every round of tool use. Cache reads cost 0.1 times the input price and
-cache writes 1.25 times, so it pays off from the second call within five
-minutes; on a quiet bot the first call of a burst writes the cache and the
-rest read it.
+**Why.** Every model call repeats the same large block: the tool
+descriptions and the system prompt, thousands of tokens. Anthropic can keep
+that block cached for 5 minutes. A cached token costs a tenth of the normal
+input price, and writing it to the cache costs a quarter more once. So the
+first call of a burst pays slightly more and every call after it, including
+each round of tool use within one question, is much cheaper. Each read
+renews the 5 minutes, so a bot that gets a question at least every 5
+minutes stays warm. On the default
+`claude-haiku-5-5` this takes most of the input cost out of busy periods.
 
-To make that work the system prompt never changes: the time and the
-asker's name (when `MNEMO_SEND_DISPLAY_NAME` allows it) are sent as a short
-note in front of the question instead. Mnemo behaves the same. If you set
-your own persona, keep it free of anything that changes per request: no
-date, no IDs. A system prompt plus tools below the model's minimum for
-caching (512 tokens on the Claude 5.5 models) is simply not cached and
-costs the normal price. The default persona is above it with the built-in
-tools.
+**What you need to do.** Nothing: caching is on for the `anthropic` provider
+and has no setting. It does not apply to the OpenAI providers. Two things
+keep it working:
 
-How the budget counts it:
+- Mnemo keeps the system prompt identical for every request. The current
+  time and, with `MNEMO_SEND_DISPLAY_NAME=true`, the asker's name are sent as
+  a short note in front of the question instead. Answers are unchanged.
+- If you set your own persona (`MNEMO_SYSTEM_PROMPT` or
+  `MNEMO_SYSTEM_PROMPT_FILE`), keep it free of anything that changes per
+  request, such as a date or an ID: a changing prompt can never be cached.
+  Prompts shorter than the model's minimum for caching (512 tokens on the
+  Claude 5.5 models, tools included) are not cached and cost the normal
+  price; the default persona with the built-in tools is above it.
 
-- **Cost budget** (`MNEMO_DAILY_COST_BUDGET_USD`): cache reads at 0.1 times
-  and writes at 1.25 times `MNEMO_PRICE_INPUT_PER_MTOK`. Some models read
-  even cheaper; Mnemo then counts a little too much, never too little.
-- **Token budget** (`MNEMO_DAILY_TOKEN_BUDGET`): counts every prompt token,
-  cached ones included. A cached token still went through the model, so the
-  token budget measures volume and the cost budget measures money.
-- The Details note shows the full prompt size; its dollar figure applies the
-  cache prices.
+**How the budgets count it.**
 
-To check that it works, run with `MNEMO_LOG_LEVEL=debug`: every Anthropic
-call logs `anthropic_cache` with `cache_read_input_tokens` and
-`cache_creation_input_tokens`. The first call after a pause shows a write;
-the next ones within five minutes show reads of the same size.
-`cache_read_input_tokens` staying at 0 across calls means something in the
-prompt prefix changes between requests.
+| Setting | Cached tokens |
+|---|---|
+| `MNEMO_DAILY_COST_BUDGET_USD` | Reads at 0.1 times and writes at 1.25 times `MNEMO_PRICE_INPUT_PER_MTOK`. Models with cheaper reads (Sonnet 5.5 and Opus 5.5 read at 0.05 times) are counted a little too high, never too low. |
+| `MNEMO_DAILY_TOKEN_BUDGET` | Counted in full. A cached token still went through the model, so this budget measures volume; the cost budget measures money. |
+| Details button | Shows the full prompt size; the dollar figure uses the cache prices. |
+
+**How to check that it works.** Set `MNEMO_LOG_LEVEL=debug`. Every Anthropic
+call then logs one `anthropic_cache` line:
+
+```json
+{"time":"2026-11-13T12:00:00.000Z","level":"debug","msg":"anthropic_cache","model":"claude-haiku-5-5","input_tokens":42,"cache_read_input_tokens":3900,"cache_creation_input_tokens":0,"output_tokens":120}
+```
+
+The first call after a pause of more than 5 minutes writes the cache
+(`cache_creation_input_tokens` is large). Calls within the next 5 minutes read
+it (`cache_read_input_tokens` is large, `cache_creation_input_tokens` small).
+If `cache_read_input_tokens` stays at 0 across calls, the start of the prompt
+changes between requests: check a custom persona for dates or IDs.
 
 Guards keep a busy channel or a curious member from running up a bill:
 
@@ -492,8 +506,11 @@ Answer in the language of the question.
 
 Whatever you write, Mnemo appends a few rules that keep it safe: tool
 results and quoted messages are data, not instructions; it cannot act beyond
-answering; it does not reveal its instructions. It also adds the current
-date and time, and the asker's name if you enabled that.
+answering; it does not reveal its instructions. It also tells the model the
+current date and time, and the asker's name if you enabled that, in a note in
+front of each question. Keep dates, IDs and other changing text out of your
+persona: a prompt that changes between requests cannot be cached (see
+[Prompt caching](#prompt-caching-anthropic)).
 
 To rename the bot itself, edit `name` in `mnemo.manifest.json` before adding
 it, or rename it later in Admin area > Bots.

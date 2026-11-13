@@ -10,16 +10,22 @@ All notable changes to Mnemo. The format follows
 
 ### Changed
 
-- Anthropic prompt caching: the system prompt (and the tools before it) is
-  cached, and the conversation tail is cached across the rounds of a tool
-  loop. The system prompt is now identical for every request; the current
-  time and the asker's name arrive as a short note before the question.
-  Answers are unchanged. The OpenAI providers send the same text as before.
-- The daily cost budget prices cache reads at 0.1 times and cache writes at
-  1.25 times the input price; the token budget still counts every token.
-  Today's counters in `budget.json` carry over.
-- `MNEMO_LOG_LEVEL=debug` logs `anthropic_cache` with the cache read and
-  write token counts of each call.
+- Cheaper answers on Anthropic: Mnemo now uses prompt caching, so the tool
+  descriptions and the system prompt, which every call repeats, are billed
+  at a tenth of the input price after the first call within 5 minutes. It
+  is on by default and needs no setting. Answers are unchanged.
+- To make that possible the system prompt no longer contains the time or the
+  asker's name; both arrive as a short note in front of the question. If you
+  use a custom persona (`MNEMO_SYSTEM_PROMPT`), keep it free of dates and
+  IDs, or it cannot be cached.
+- The daily cost budget (`MNEMO_DAILY_COST_BUDGET_USD`) now prices cached
+  tokens correctly: reads at 0.1 times and writes at 1.25 times the input
+  price. The token budget still counts every token. Today's usage is kept
+  across the update.
+- With `MNEMO_LOG_LEVEL=debug`, each Anthropic call logs `anthropic_cache`
+  with how many tokens were read from and written to the cache, so you can
+  check that caching works.
+- The OpenAI providers behave as before.
 
 ## [0.1.0] - 2026-11-13
 
