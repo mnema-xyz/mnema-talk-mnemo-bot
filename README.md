@@ -119,7 +119,7 @@ type `/ask`. Nothing happens? See [Troubleshooting](#troubleshooting).
 |---|---|
 | Mention it in a channel: `@mnemo how warm is it in Oslo?` | Reacts with 👀 while it works, then answers in a **thread under your message** |
 | Write in a thread that Mnemo started (no mention needed) | Answers in the thread and remembers the conversation so far (bounded, see `MNEMO_THREAD_*`) |
-| Mention it inside some other thread | Answers there; from then on it follows that thread too |
+| Mention it inside somebody else's thread | Answers that one message there, with no earlier context, and does not follow that thread |
 | `/ask question:… [private:true]` | Answers in the channel, or only to you with `private` |
 | **Regenerate** | Writes a new answer to the same question. Only the person who asked can use it. The old answer stays but loses its buttons |
 | **Details** | Shows you privately which tools were used with which input, which model answered, the tokens used and what was sent to the provider |
@@ -333,7 +333,8 @@ itself with the User-Agent `Mnemo/<version> (+<this repository>)` and sends
 nothing else.
 
 **Kept by Mnemo**, in memory only: the bounded thread conversations (for
-`MNEMO_THREAD_TTL_HOURS`) and what the buttons need (for 24 hours, at most
+`MNEMO_THREAD_TTL_HOURS`, at most 1000 threads; beyond that the quietest
+thread is forgotten and Mnemo stops answering there without a mention) and what the buttons need (for 24 hours, at most
 2000 answers). A restart forgets them. On disk there is only the day's token
 count (`budget.json` in `MNEMO_DATA_DIR`), without any content.
 

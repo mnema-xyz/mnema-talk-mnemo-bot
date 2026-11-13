@@ -136,7 +136,12 @@ export class MnemoBot {
 
   private async answerMessage(m: Message, threadId: string | undefined): Promise<void> {
     const question = this.stripMention(m.content)
-    const history = threadId ? (this.threads.get(threadId) ?? []) : []
+    const known = threadId ? this.threads.get(threadId) : undefined
+    const history = known ?? []
+    // Mnemo follows the threads it starts (under a question in the channel)
+    // and those it already follows; a mention in someone else's thread gets
+    // one answer, without Mnemo reading along from then on.
+    const follow = threadId !== undefined && (threadId === m.id || known !== undefined)
     await this.react(m, true)
     try {
       const result = await this.engine.ask({
@@ -150,7 +155,7 @@ export class MnemoBot {
       const answerId = this.remember(result, { question, history, askerId: m.user_id, channelId: m.channel_id, threadId, ephemeral: false })
       const components = answerId ? this.buttons(answerId, false) : undefined
       await this.post(m.channel_id, result.text, components, threadId ? { parent_id: threadId } : { message_reference: { message_id: m.id } })
-      if (threadId && result.kind === 'answer') {
+      if (follow && result.kind === 'answer') {
         this.threads.set(threadId, boundHistory([...history, { role: 'user', text: question }, { role: 'assistant', text: result.text }], this.s.thread))
       }
     } finally {

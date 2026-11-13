@@ -151,6 +151,16 @@ describe('Mnemo on a real Mnema Talk', { skip: !URL_ && 'run through scripts/int
     assert.equal(second.content, 'You asked: and 3+3? (with 2 earlier messages)')
   })
 
+  it('answers a mention in somebody else\'s thread once, without following that thread', async () => {
+    const root = await owner.ok<Msg>('POST', `/api/channels/${channelId}/messages`, { content: 'a thread of our own' })
+    await owner.ok('POST', `/api/channels/${channelId}/messages`, { content: `@${botUsername} what is 5+5?`, parent_id: root.id })
+    const reply = await until('the answer in that thread', async () => fromBot(await thread(root.id)).at(0))
+    assert.equal(reply.content, 'You asked: what is 5+5?')
+    await owner.ok('POST', `/api/channels/${channelId}/messages`, { content: 'thanks, carry on', parent_id: root.id })
+    await new Promise((r) => setTimeout(r, 1500))
+    assert.equal(fromBot(await thread(root.id)).length, 1)
+  })
+
   it('ignores messages that do not mention it outside its threads', async () => {
     const q = await owner.ok<Msg>('POST', `/api/channels/${channelId}/messages`, { content: 'just chatting' })
     await new Promise((r) => setTimeout(r, 1500))
