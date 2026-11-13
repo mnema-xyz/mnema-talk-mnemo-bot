@@ -65,6 +65,8 @@ const bot = new MnemoBot(
   budget,
   {
     allowedChannels: config.allowedChannels,
+    adminUserIds: config.adminUserIds,
+    maxRegenerations: config.maxRegenerations,
     replyInThread: config.replyInThread,
     sendDisplayName: config.sendDisplayName,
     thread: { maxTurns: config.threadMaxTurns, maxChars: config.threadMaxChars, ttlMs: config.threadTtlHours * 3600_000 },

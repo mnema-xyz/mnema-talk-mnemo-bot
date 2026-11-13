@@ -1,10 +1,10 @@
 // Turning an answer into Mnema Talk messages: the components under it and
-// the Details text. Pure functions, so they are easy to read and test.
+// the details text (admins only, via /details). Pure functions, so they are easy to read and test.
 import type { AskResult, ToolUse } from '../engine/engine.ts'
 
 export const ID_PREFIX = 'mnemo'
 
-export type ButtonKind = 'regen' | 'details' | 'follow'
+export type ButtonKind = 'regen' | 'follow'
 
 export function customId(kind: ButtonKind | 'followup', answerId: string): string {
   return `${ID_PREFIX}:${kind}:${answerId}`
@@ -69,7 +69,7 @@ export function detailsFrom(
   }
 }
 
-/** The private note behind the Details button. */
+/** The private note of /details, shown to admins only. */
 export function detailsText(d: AnswerDetails): string {
   const lines = [`**How this answer was made**`, `-# ${d.provider} · ${d.model}`, '']
   if (d.toolsUsed.length === 0) {
@@ -80,7 +80,6 @@ export function detailsText(d: AnswerDetails): string {
       lines.push(`- ${TOOL_LABELS[t.name] ?? t.name}${t.ok ? '' : ' (failed)'}: \`${describeInput(t.input).replaceAll('`', "'")}\``)
     }
   }
-  // Anyone may open Details, so it speaks of "the question", not "your".
   const sent = ['the question']
   if (d.historyTurns > 0) {
     sent.push(d.context === 'thread' ? `the last ${d.historyTurns} messages of the thread` : 'the earlier question and answer')

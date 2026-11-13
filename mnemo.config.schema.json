@@ -114,6 +114,25 @@
         }
       ]
     },
+    "adminUserIds": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "maxRegenerations": {
+      "default": 2,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
     "replyInThread": {
       "anyOf": [
         {

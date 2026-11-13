@@ -11,4 +11,17 @@ export const ASK_COMMAND: CommandInput = {
   ],
 }
 
+/** Admin-only: how the last public answer in this channel was made. The
+ * platform cannot hide a command from members, so Mnemo registers it only
+ * when admins are configured and refuses everyone else in private. */
+export const DETAILS_COMMAND: CommandInput = {
+  name: 'details',
+  description: 'For Mnemo admins: how the last answer in this channel was made',
+}
+
+/** The manifest lists only /ask; /details is added at start when needed. */
 export const COMMANDS: CommandInput[] = [ASK_COMMAND]
+
+export function commandsFor(adminUserIds: readonly string[]): CommandInput[] {
+  return adminUserIds.length > 0 ? [ASK_COMMAND, DETAILS_COMMAND] : COMMANDS
+}

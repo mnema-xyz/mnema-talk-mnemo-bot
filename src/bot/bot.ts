@@ -1,5 +1,5 @@
 // Mnemo on Mnema Talk: answers mentions, /ask and messages in the threads it
-// started, with Regenerate, Details and Follow-up buttons. All chat-specific
+// started, with Regenerate and Follow-up buttons and an admin-only /details. All chat-specific
 // code is in this file; the answering itself is the Engine's.
 import { randomBytes } from 'node:crypto'
 import {
@@ -21,12 +21,16 @@ import { OncePerWindow, type Budget } from '../engine/limits.ts'
 import { boundHistory, LruMap, type HistoryTurn, type ThreadLimits } from '../engine/memory.ts'
 import { splitMessage } from '../engine/split.ts'
 import type { Logger } from '../log.ts'
-import { COMMANDS } from './commands.ts'
+import { commandsFor } from './commands.ts'
 import { customId, detailsFrom, detailsText, parseCustomId, type AnswerDetails } from './delivery.ts'
 
 export interface BotSettings {
   /** Channel IDs Mnemo answers in; empty means all it can see. */
   allowedChannels: string[]
+  /** User IDs that may run /details; empty registers no /details at all. */
+  adminUserIds: string[]
+  /** Regenerations per answer; 0 removes the button. */
+  maxRegenerations: number
   /** Answer a mention in a new thread under the question (else as a reply). */
   replyInThread: boolean
   sendDisplayName: boolean
@@ -43,6 +47,8 @@ interface AnswerRecord {
   /** The thread the answer is in, if any. */
   threadId?: string | undefined
   ephemeral: boolean
+  /** How many times this question was regenerated to get this answer. */
+  regenerations: number
   details: AnswerDetails
 }
 
@@ -58,6 +64,8 @@ export class MnemoBot {
   private selfHandle = ''
   private readonly threads: LruMap<HistoryTurn[]>
   private readonly answers = new LruMap<AnswerRecord>(MAX_ANSWERS, 24 * 3600_000)
+  /** The last public answer per channel, for /details. */
+  private readonly lastAnswer = new LruMap<string>(MAX_ANSWERS, 24 * 3600_000)
   /** Who was already told about a limit in this window. */
   private readonly told = new OncePerWindow()
   /** One question at a time per thread, so answers keep their order. */
@@ -98,7 +106,7 @@ export class MnemoBot {
 
   private async afterReady(): Promise<void> {
     try {
-      await this.client.commands.set(COMMANDS)
+      await this.client.commands.set(commandsFor(this.s.adminUserIds))
       this.client.setPresence({ status: 'online', activity: { type: ActivityType.Custom, name: 'Ask me: /ask or @mention' } })
     } catch (err) {
       this.log.warn('setup_failed', { error: err })
@@ -152,8 +160,8 @@ export class MnemoBot {
         askerName: m.display_name || m.username,
         admitted: true,
       })
-      const answerId = this.remember(result, { question, history, askerId: m.user_id, channelId: m.channel_id, threadId, ephemeral: false })
-      const components = answerId ? this.buttons(answerId, false) : undefined
+      const answerId = this.remember(result, { question, history, askerId: m.user_id, channelId: m.channel_id, threadId, ephemeral: false, regenerations: 0 })
+      const components = answerId ? this.buttons(answerId, false, 0) : undefined
       await this.post(m.channel_id, result.text, components, threadId ? { parent_id: threadId } : { message_reference: { message_id: m.id } })
       if (follow && result.kind === 'answer') {
         this.threads.set(threadId, boundHistory([...history, { role: 'user', text: question }, { role: 'assistant', text: result.text }], this.s.thread))
@@ -207,6 +215,7 @@ export class MnemoBot {
 
   private async onInteraction(i: Interaction): Promise<void> {
     if (i.isCommand() && i.commandName === 'ask') return this.onAsk(i)
+    if (i.isCommand() && i.commandName === 'details') return this.onDetails(i)
     const id = i.isButton() || i.isModalSubmit() ? parseCustomId(i.customId) : undefined
     if (!id) return
     if (i.isModalSubmit() && id.kind === 'followup') return this.onFollowUpSubmit(i, id.answerId)
@@ -215,9 +224,7 @@ export class MnemoBot {
       await i.reply({ content: 'This answer is too old for that now. Ask me again.', ephemeral: true, allowed_mentions: NO_PINGS })
       return
     }
-    if (id.kind === 'details') {
-      await i.reply({ content: detailsText(rec.details), ephemeral: true, allowed_mentions: NO_PINGS })
-    } else if (id.kind === 'regen') {
+    if (id.kind === 'regen') {
       await this.onRegenerate(i, id.answerId, rec)
     } else if (id.kind === 'follow') {
       await i.showModal(
@@ -234,6 +241,24 @@ export class MnemoBot {
     }
   }
 
+  /** /details: admins only. Everyone else gets a private refusal, and no
+   * detail reaches the channel or anyone else. */
+  private async onDetails(i: Interaction): Promise<void> {
+    if (!this.s.adminUserIds.includes(i.user.id)) {
+      this.log.info('details_refused', { user: i.user.id, channel: i.channelId })
+      await i.reply({ content: 'Only Mnemo admins can see how an answer was made.', ephemeral: true, allowed_mentions: NO_PINGS })
+      return
+    }
+    const answerId = this.lastAnswer.get(i.channelId)
+    const rec = answerId ? this.answers.get(answerId) : undefined
+    if (!rec) {
+      await i.reply({ content: 'I have no recent public answer in this channel to show details for.', ephemeral: true, allowed_mentions: NO_PINGS })
+      return
+    }
+    this.log.info('details_viewed', { user: i.user.id, channel: i.channelId, answer: answerId })
+    await i.reply({ content: detailsText(rec.details), ephemeral: true, allowed_mentions: NO_PINGS })
+  }
+
   private async onAsk(i: Interaction): Promise<void> {
     const ephemeral = i.options.get('private') === true
     if (!this.allowed(i.channelId)) {
@@ -243,7 +268,7 @@ export class MnemoBot {
     const question = String(i.options.get('question') ?? '')
     if (await this.refusedPrivately(i)) return
     await i.deferReply({ ephemeral })
-    await this.answerInteraction(i, { question, history: [], ephemeral, first: 'edit' })
+    await this.answerInteraction(i, { question, history: [], ephemeral, first: 'edit', regenerations: 0 })
   }
 
   private async onFollowUpSubmit(i: Interaction, answerId: string): Promise<void> {
@@ -253,12 +278,16 @@ export class MnemoBot {
     if (await this.refusedPrivately(i)) return
     await i.deferReply({ ephemeral })
     const history = rec ? boundHistory([...rec.history, { role: 'user', text: rec.question }, { role: 'assistant', text: rec.answer }], this.s.thread) : []
-    await this.answerInteraction(i, { question, history, ephemeral, first: 'edit' })
+    await this.answerInteraction(i, { question, history, ephemeral, first: 'edit', regenerations: 0 })
   }
 
   private async onRegenerate(i: Interaction, answerId: string, rec: AnswerRecord): Promise<void> {
     if (i.user.id !== rec.askerId) {
       await i.reply({ content: 'Only the person who asked can regenerate this answer.', ephemeral: true, allowed_mentions: NO_PINGS })
+      return
+    }
+    if (rec.regenerations >= this.s.maxRegenerations) {
+      await i.reply({ content: 'This answer was regenerated as often as allowed. Ask a new question or a follow-up.', ephemeral: true, allowed_mentions: NO_PINGS })
       return
     }
     if (await this.refusedPrivately(i)) return
@@ -277,13 +306,13 @@ export class MnemoBot {
           askerName: i.user.display_name,
           admitted: true,
         })
-        const newId = this.remember(result, { ...rec, ephemeral: false })
-        await this.post(rec.channelId, result.text, newId ? this.buttons(newId, false) : undefined, { parent_id: threadId })
+        const newId = this.remember(result, { ...rec, ephemeral: false, regenerations: rec.regenerations + 1 })
+        await this.post(rec.channelId, result.text, newId ? this.buttons(newId, false, rec.regenerations + 1) : undefined, { parent_id: threadId })
         if (result.kind === 'answer') this.replaceInThread(threadId, rec.answer, result.text)
       })
       return
     }
-    await this.answerInteraction(i, { question: rec.question, history: rec.history, ephemeral: rec.ephemeral, first: 'followup' })
+    await this.answerInteraction(i, { question: rec.question, history: rec.history, ephemeral: rec.ephemeral, first: 'followup', regenerations: rec.regenerations + 1 })
   }
 
   /** Checks the limits for an interaction; a refusal goes only to the member. */
@@ -298,7 +327,7 @@ export class MnemoBot {
    * follow-up), the rest as follow-ups, the buttons under the last part. */
   private async answerInteraction(
     i: Interaction,
-    q: { question: string; history: HistoryTurn[]; ephemeral: boolean; first: 'edit' | 'followup' },
+    q: { question: string; history: HistoryTurn[]; ephemeral: boolean; first: 'edit' | 'followup'; regenerations: number },
   ): Promise<void> {
     const result = await this.engine.ask({
       question: q.question,
@@ -308,11 +337,12 @@ export class MnemoBot {
       askerName: i.user.display_name || i.user.username,
       admitted: true,
     })
-    const answerId = this.remember(result, { question: q.question, history: q.history, askerId: i.user.id, channelId: i.channelId, ephemeral: q.ephemeral })
+    const answerId = this.remember(result, { question: q.question, history: q.history, askerId: i.user.id, channelId: i.channelId, ephemeral: q.ephemeral, regenerations: q.regenerations })
     const parts = splitMessage(result.text)
     for (const [n, content] of parts.entries()) {
       const last = n === parts.length - 1
-      const data = { content, allowed_mentions: NO_PINGS, ...(last && answerId ? { components: this.buttons(answerId, true) } : {}) }
+      const components = last && answerId ? this.buttons(answerId, true, q.regenerations) : undefined
+      const data = { content, allowed_mentions: NO_PINGS, ...(components ? { components } : {}) }
       // The first part replaces the deferred reply, which already knows
       // whether it is private; follow-ups say it themselves.
       if (n === 0 && q.first === 'edit') await i.editReply(data)
@@ -320,13 +350,16 @@ export class MnemoBot {
     }
   }
 
-  private buttons(answerId: string, followUp: boolean) {
-    const row = [
-      button({ customId: customId('regen', answerId), label: 'Regenerate', style: ButtonStyle.Secondary }),
-      button({ customId: customId('details', answerId), label: 'Details', style: ButtonStyle.Secondary }),
-    ]
+  /** Regenerate (until its limit), and Follow up under interaction answers;
+   * no buttons at all when neither applies. Details are not a button: they
+   * are for admins, through /details. */
+  private buttons(answerId: string, followUp: boolean, regenerations: number) {
+    const row = []
+    if (regenerations < this.s.maxRegenerations) {
+      row.push(button({ customId: customId('regen', answerId), label: 'Regenerate', style: ButtonStyle.Secondary }))
+    }
     if (followUp) row.push(button({ customId: customId('follow', answerId), label: 'Follow up', style: ButtonStyle.Primary }))
-    return [actionRow(...row)]
+    return row.length > 0 ? [actionRow(...row)] : undefined
   }
 
   /** Keeps what the buttons need; refusals (limits, budget) get no buttons. */
@@ -336,6 +369,21 @@ export class MnemoBot {
     const context = r.history.length === 0 ? 'none' : r.threadId ? 'thread' : 'follow-up'
     const details = detailsFrom(result, r.history.length, context, this.s.sendDisplayName, this.budget.costUsd(result.usage))
     this.answers.set(id, { ...r, answer: result.text, details })
+    if (!r.ephemeral) this.lastAnswer.set(r.channelId, id)
+    this.log.info('answer_details', {
+      answer: id,
+      channel: r.channelId,
+      asker: r.askerId,
+      provider: details.provider,
+      model: details.model,
+      tools: details.toolsUsed.map((t) => `${t.name}${t.ok ? '' : ':failed'}`),
+      input_tokens: details.inputTokens,
+      output_tokens: details.outputTokens,
+      cost_usd: details.costUsd,
+      context: details.context,
+      history_turns: details.historyTurns,
+      regenerations: r.regenerations,
+    })
     return id
   }
 
