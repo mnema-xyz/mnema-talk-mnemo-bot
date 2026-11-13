@@ -18,6 +18,7 @@ free_port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",
 export IT_APP_PORT="${IT_APP_PORT:-$(free_port)}"
 export IT_JWT_SECRET="$(openssl rand -hex 32)"
 export IT_ADMIN_PASSWORD="it-$(openssl rand -hex 10)"
+export IT_S3_KEY="$(openssl rand -hex 16)" IT_S3_SECRET="$(openssl rand -hex 32)"
 PROJECT="${IT_PROJECT:-mnemo-it-$$}"
 COMPOSE=(docker compose -p "$PROJECT" -f test/integration/docker-compose.yml)
 

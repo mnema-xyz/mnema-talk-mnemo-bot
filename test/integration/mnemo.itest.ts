@@ -4,7 +4,7 @@
 // runs /ask and clicks its buttons.
 import assert from 'node:assert/strict'
 import { spawn, type ChildProcess } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { after, before, describe, it } from 'node:test'
 
@@ -129,10 +129,11 @@ describe('Mnemo on a real Mnema Talk', { skip: !URL_ && 'run through scripts/int
 
   after(() => {
     if (mnemo && mnemo.exitCode === null) mnemo.kill('SIGKILL')
-    if (process.exitCode) console.error(logs.join(''))
+    // Mnemo's own log, for a failed run (git-ignored).
+    writeFileSync(new URL('./mnemo.log', import.meta.url), logs.join(''))
   })
 
-  const thread = (rootId: string) => owner.ok<Msg[]>('GET', `/api/messages/${rootId}/thread`)
+  const thread = async (rootId: string) => (await owner.ok<{ replies: Msg[] }>('GET', `/api/messages/${rootId}/thread`)).replies
   const channelMessages = () => owner.ok<Msg[]>('GET', `/api/channels/${channelId}/messages?limit=50`)
   const fromBot = (ms: Msg[]) => ms.filter((m) => m.user_id === botUserId)
 

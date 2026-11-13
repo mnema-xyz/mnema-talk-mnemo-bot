@@ -13,6 +13,7 @@ import {
   TextInputStyle,
   type Client,
   type Interaction,
+  type InteractionUser,
   type Message,
 } from 'mnema-talk-sdk'
 import type { AskResult, Engine } from '../engine/engine.ts'
@@ -44,6 +45,10 @@ interface AnswerRecord {
   ephemeral: boolean
   details: AnswerDetails
 }
+
+/** An interaction with the member who caused it (always set for clicks,
+ * commands and submits; the SDK types it optional). */
+type MemberInteraction = Interaction & { readonly user: InteractionUser }
 
 const THINKING = '👀'
 const MAX_ANSWERS = 2000
@@ -143,9 +148,14 @@ export class MnemoBot {
 
   /** Removes "@mnemo" from the question; the model does not need it. */
   private stripMention(content: string): string {
-    if (!this.selfUsername) return content.trim()
-    const name = this.selfUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    return content.replace(new RegExp(`@${name}\\b`, 'gi'), '').replace(/\s+/g, ' ').trim()
+    // A mention is written with the bot's handle (`@bot-…`, as the mention
+    // picker inserts it); READY names the bot by its display name.
+    let s = content.replace(/(^|\s)@bot-[a-z0-9]+\b/gi, ' ')
+    if (this.selfUsername) {
+      const name = this.selfUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      s = s.replace(new RegExp(`(^|\\s)@${name}\\b`, 'gi'), ' ')
+    }
+    return s.replace(/\s+/g, ' ').trim()
   }
 
   private async react(m: Message, on: boolean): Promise<void> {
@@ -178,6 +188,7 @@ export class MnemoBot {
   // ---- /ask and the buttons ------------------------------------------------
 
   private async onInteraction(i: Interaction): Promise<void> {
+    if (!hasUser(i)) return
     if (i.isCommand() && i.commandName === 'ask') return this.onAsk(i)
     const id = i.isButton() || i.isModalSubmit() ? parseCustomId(i.customId) : undefined
     if (!id) return
@@ -206,7 +217,7 @@ export class MnemoBot {
     }
   }
 
-  private async onAsk(i: Interaction): Promise<void> {
+  private async onAsk(i: MemberInteraction): Promise<void> {
     const ephemeral = i.options.get('private') === true
     if (!this.allowed(i.channelId)) {
       await i.reply({ content: 'I do not answer in this channel. Ask me in one where I am enabled.', ephemeral: true })
@@ -217,7 +228,7 @@ export class MnemoBot {
     await this.answerInteraction(i, { question, history: [], ephemeral, first: 'edit' })
   }
 
-  private async onFollowUpSubmit(i: Interaction, answerId: string): Promise<void> {
+  private async onFollowUpSubmit(i: MemberInteraction, answerId: string): Promise<void> {
     const rec = this.answers.get(answerId)
     const question = i.fields.get('question') ?? ''
     const ephemeral = rec?.ephemeral ?? false
@@ -226,7 +237,7 @@ export class MnemoBot {
     await this.answerInteraction(i, { question, history, ephemeral, first: 'edit' })
   }
 
-  private async onRegenerate(i: Interaction, answerId: string, rec: AnswerRecord): Promise<void> {
+  private async onRegenerate(i: MemberInteraction, answerId: string, rec: AnswerRecord): Promise<void> {
     if (i.user.id !== rec.askerId) {
       await i.reply({ content: 'Only the person who asked can regenerate this answer.', ephemeral: true })
       return
@@ -251,7 +262,7 @@ export class MnemoBot {
   /** Answers through the interaction: the first part as the reply (or a
    * follow-up), the rest as follow-ups, the buttons under the last part. */
   private async answerInteraction(
-    i: Interaction,
+    i: MemberInteraction,
     q: { question: string; history: HistoryTurn[]; ephemeral: boolean; first: 'edit' | 'followup' },
   ): Promise<void> {
     const result = await this.engine.ask({
@@ -265,14 +276,12 @@ export class MnemoBot {
     const parts = splitMessage(result.text)
     for (const [n, content] of parts.entries()) {
       const last = n === parts.length - 1
-      const data = {
-        content,
-        ephemeral: q.ephemeral,
-        allowed_mentions: { parse: [] },
-        ...(last && answerId ? { components: this.buttons(answerId, true) } : {}),
-      }
+      const data = { content, ...(last && answerId ? { components: this.buttons(answerId, true) } : {}) }
+      // The first part replaces the deferred reply, which already knows
+      // whether it is private; follow-ups say it themselves. Interaction
+      // responses never notify @all or @here, so no allowed_mentions.
       if (n === 0 && q.first === 'edit') await i.editReply(data)
-      else await i.followUp(data)
+      else await i.followUp({ ...data, ephemeral: q.ephemeral })
     }
   }
 
@@ -320,4 +329,8 @@ export class MnemoBot {
   stats(): Record<string, number> {
     return { threads: this.threads.size, answers: this.answers.size }
   }
+}
+
+function hasUser(i: Interaction): i is MemberInteraction {
+  return i.user !== undefined
 }
