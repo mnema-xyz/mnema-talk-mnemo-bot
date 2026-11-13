@@ -75,6 +75,26 @@ Add from manifest** and paste the contents of `mnemo.manifest.json`.
 The link only carries the manifest, in the part after `#`, which the browser
 never sends to the server. Opening the link creates nothing until you confirm.
 
+**Headless setup (no browser).** The confirm screen calls one endpoint, which
+you can call yourself as the Owner (or with *Manage bots*): `POST
+/api/admin/bots/install` creates the bot, allows its permissions in the
+channels you list and returns the token once. The calls need the session
+cookie of a signed-in admin and an `Origin` header equal to the server's
+address:
+
+```sh
+URL=https://talk.example.org
+curl -sS -c jar -H "Origin: $URL" -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"..."}' $URL/api/auth/login
+jq -n --slurpfile m mnemo.manifest.json --arg c "<channel id>" \
+  '{manifest:$m[0], intents:$m[0].intents, permissions:$m[0].permissions, channel_ids:[$c]}' |
+curl -sS -b jar -H "Origin: $URL" -H 'Content-Type: application/json' \
+  --data @- $URL/api/admin/bots/install | jq -r .token
+```
+
+Channel ids come from `GET /api/channels`. Pass the token to Mnemo through
+`MNEMA_TOKEN_FILE` rather than the shell history. The name you mention (`@bot-...`) is in the member list and in the `ready` line of Mnemo's log.
+
 ### 2. Configure
 
 ```sh
