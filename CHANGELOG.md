@@ -20,10 +20,11 @@ All notable changes to Mnemo. The format follows
   IDs, or it cannot be cached.
 - The daily cost budget (`MNEMO_DAILY_COST_BUDGET_USD`) now prices cached
   tokens correctly: reads at 0.1 times and writes at 1.25 times the input
-  price. The token budget still counts every token. Today's counters in
-  `budget.json` carry over.
+  price. The token budget still counts every token. Today's usage is kept
+  across the update.
 - With `MNEMO_LOG_LEVEL=debug`, each Anthropic call logs `anthropic_cache`
-  with its cache read and write token counts, to check that caching works.
+  with how many tokens were read from and written to the cache, so you can
+  check that caching works.
 - The OpenAI providers behave as before.
 
 ## [0.1.0] - 2026-11-13
