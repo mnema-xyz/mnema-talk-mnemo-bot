@@ -1,0 +1,2 @@
+# A fake key in a unit test (commit 69d92e0), never a real secret; replaced since.
+69d92e09735aacb8327429551b8a0a03786e4ffa:test/providers.test.ts:generic-api-key:9

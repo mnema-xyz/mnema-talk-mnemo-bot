@@ -6,7 +6,7 @@ import { anthropicProvider } from '../src/providers/anthropic.ts'
 import { openaiProvider } from '../src/providers/openai.ts'
 import { ProviderError, type ChatRequest } from '../src/providers/types.ts'
 
-const KEY = 'sk-test-0123456789abcdef'
+const KEY = 'fake-key-for-tests' // not a secret: the tests never send it anywhere
 
 function answering(status: number, body: unknown): typeof fetch & { bodies: unknown[] } {
   const bodies: unknown[] = []
