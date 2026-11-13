@@ -7,6 +7,7 @@ All notable changes to Mnemo. The format follows
 ## [Unreleased]
 
 ## [0.1.1] - 2026-11-13
+
 ### Changed
 
 - Anthropic prompt caching: the system prompt (and the tools before it) is
