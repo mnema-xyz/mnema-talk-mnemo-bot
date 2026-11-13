@@ -89,7 +89,7 @@ curl -sS -c jar -H "Origin: $URL" -H 'Content-Type: application/json' \
 jq -n --slurpfile m mnemo.manifest.json --arg c "<channel id>" \
   '{manifest:$m[0], intents:$m[0].intents, permissions:$m[0].permissions, channel_ids:[$c]}' |
 curl -sS -b jar -H "Origin: $URL" -H 'Content-Type: application/json' \
-  --data @- $URL/api/admin/bots/install | jq -r .token
+  --data @- $URL/api/admin/bots/install | jq -r .token.secret
 ```
 
 Channel ids come from `GET /api/channels`. Pass the token to Mnemo through
