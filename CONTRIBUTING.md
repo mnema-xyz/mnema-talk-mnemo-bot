@@ -55,7 +55,7 @@ commit on `main`, and the changelog and the next version are made from those
 commits, so write it for the people who read the changelog.
 
 By contributing you agree that your contribution is licensed under the
-[AGPL-3.0](LICENSE).
+[MIT License](LICENSE).
 
 ## Releases
 
