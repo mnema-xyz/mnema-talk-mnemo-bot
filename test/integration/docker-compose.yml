@@ -1,0 +1,50 @@
+# A throwaway Mnema Talk for the integration test (scripts/integration.sh):
+# PostgreSQL, SeaweedFS and the server built from a mnema-talk checkout
+# (MNEMA_SRC). Loopback ports only, no volumes: `down -v` removes everything.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: mnema
+      POSTGRES_PASSWORD: mnema
+      POSTGRES_DB: mnema_it
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mnema -d mnema_it"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.48
+    command: "server -s3 -s3.port=8333 -dir=/data"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9333/cluster/status >/dev/null || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  mnema:
+    build: ${MNEMA_SRC:?set MNEMA_SRC to a mnema-talk checkout}
+    image: mnema-talk:mnemo-it
+    depends_on:
+      postgres: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
+    environment:
+      APP_ENV: development
+      PORT: "8080"
+      PUBLIC_URL: http://127.0.0.1:${IT_APP_PORT:?}
+      JWT_SECRET: ${IT_JWT_SECRET:?}
+      ADMIN_USERNAME: it_owner
+      ADMIN_INITIAL_PASSWORD: ${IT_ADMIN_PASSWORD:?}
+      DATABASE_URL: postgres://mnema:mnema@postgres:5432/mnema_it?sslmode=disable
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_BUCKET: mnema-it
+      S3_ACCESS_KEY: it-key
+      S3_SECRET_KEY: it-secret
+      S3_FORCE_PATH_STYLE: "true"
+      LINK_PREVIEWS_ENABLED: "false"
+      UPDATE_CHECK_ENABLED: "false"
+      WEBRTC_BUILTIN_TURN: "off"
+    ports:
+      - "127.0.0.1:${IT_APP_PORT:?}:8080"
