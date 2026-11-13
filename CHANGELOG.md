@@ -8,6 +8,13 @@ written by release-please from the commit titles. Container images:
 Mnemo is licensed under the MIT License from the release after 0.1.3. Earlier
 releases (up to and including 0.1.3) stay AGPL-3.0-only.
 
+## [0.1.5](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/compare/v0.1.4...v0.1.5) (2026-11-13)
+
+
+### Features
+
+* Mnemo's answer details are for admins only, and Regenerate is limited ([#16](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/issues/16)) ([6e664f4](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/commit/6e664f468eaa4f2f964918c13a3a41d13d93ce90))
+
 ## [0.1.4](https://github.com/mnema-xyz/mnema-talk-mnemo-bot/compare/v0.1.3...v0.1.4) (2026-11-13)
 
 
