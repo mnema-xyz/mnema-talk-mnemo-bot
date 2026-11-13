@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.8.0",
-    "mnema-talk-sdk": "https://github.com/msch128/mnema-talk/releases/download/v3.1.0/mnema-talk-sdk-3.1.0.tgz",
+    "@mnema-xyz/bot-sdk": "3.1.2",
     "openai": "7.56.0",
     "zod": "4.6.7"
   },

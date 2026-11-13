@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { GatewayError, RestError } from 'mnema-talk-sdk'
+import { GatewayError, RestError } from '@mnema-xyz/bot-sdk'
 import { afterClose, onConnectError } from '../src/lifecycle.ts'
 
 const rest = (status: number) => new RestError({ status, method: 'GET', path: '/users/@me', body: { message: 'x', code: 0 } })

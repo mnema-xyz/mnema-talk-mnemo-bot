@@ -15,7 +15,7 @@ import {
   type Client,
   type Interaction,
   type Message,
-} from 'mnema-talk-sdk'
+} from '@mnema-xyz/bot-sdk'
 import type { AskResult, Engine } from '../engine/engine.ts'
 import { OncePerWindow, type Budget } from '../engine/limits.ts'
 import { boundHistory, LruMap, type HistoryTurn, type ThreadLimits } from '../engine/memory.ts'
