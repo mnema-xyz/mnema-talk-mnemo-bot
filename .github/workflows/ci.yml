@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: lint, typecheck, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: manifest and config schema are up to date
+        run: |
+          npm run manifest
+          npm run config-schema
+          git diff --exit-code -- mnemo.manifest.json mnemo.config.schema.json
+
+  docker:
+    name: docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker build -t mnemo:ci .
+      - name: the image runs as non-root and checks its configuration
+        run: |
+          test "$(docker run --rm --entrypoint id mnemo:ci -u)" != "0"
+          set +e
+          docker run --rm mnemo:ci > out.txt 2>&1
+          code=$?
+          set -e
+          cat out.txt
+          test "$code" = "78"
+          grep -q "MNEMA_URL: is required" out.txt
